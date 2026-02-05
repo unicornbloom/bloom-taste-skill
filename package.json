@@ -1,0 +1,29 @@
+{
+  "name": "bloom-identity-skill",
+  "version": "2.0.0",
+  "description": "OpenClaw skill for generating Bloom Identity Cards",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "test": "echo \"No tests yet\""
+  },
+  "keywords": ["openclaw", "bloom", "identity", "agent", "web3"],
+  "author": "Bloom Protocol",
+  "license": "MIT",
+  "dependencies": {
+    "@coinbase/agentkit": "^0.1.0",
+    "commander": "^11.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "viem": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
