@@ -5,7 +5,7 @@
  * based on user personality and conversation history.
  */
 
-import { PersonalityType } from '../skills/bloom-identity-skill-v2';
+import { PersonalityType } from '../types/personality';
 import { DimensionScores } from '../analyzers/personality-analyzer';
 
 export interface SkillRecommendation {

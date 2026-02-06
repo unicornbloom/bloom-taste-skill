@@ -4,7 +4,7 @@
  * Share Identity Card and supported projects on Farcaster
  */
 
-import { PersonalityType } from '../bloom-identity-skill-v2';
+import { PersonalityType } from '../types/personality';
 
 export interface CastContent {
   userId: string;

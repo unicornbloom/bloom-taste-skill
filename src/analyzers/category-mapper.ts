@@ -4,7 +4,7 @@
  * Maps personality types to main categories for project matching
  */
 
-import { PersonalityType } from '../bloom-identity-skill-v2';
+import { PersonalityType } from '../types/personality';
 
 export class CategoryMapper {
   /**

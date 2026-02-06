@@ -4,7 +4,7 @@
  * Generates Twitter share links for Bloom Identity Cards
  */
 
-import { PersonalityType } from '../bloom-identity-skill-v2';
+import { PersonalityType } from '../types/personality';
 
 export interface TwitterShareOptions {
   userId: string;

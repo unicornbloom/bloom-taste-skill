@@ -1,5 +1,7 @@
 /**
- * Personality Types for Bloom Identity Cards
+ * Personality Type Enum
+ *
+ * Separated to avoid circular dependencies
  */
 
 export enum PersonalityType {
@@ -8,23 +10,4 @@ export enum PersonalityType {
   THE_CULTIVATOR = 'The Cultivator',
   THE_OPTIMIZER = 'The Optimizer',
   THE_INNOVATOR = 'The Innovator',
-}
-
-export interface IdentityData {
-  personalityType: PersonalityType;
-  customTagline: string;
-  customDescription: string;
-  mainCategories: string[];
-  subCategories: string[];
-}
-
-export interface SkillRecommendation {
-  skillId: string;
-  skillName: string;
-  description: string;
-  url: string;
-  categories: string[];
-  matchScore: number;
-  creator?: string;
-  creatorUserId?: number;
 }

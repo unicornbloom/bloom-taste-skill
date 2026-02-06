@@ -5,7 +5,7 @@
  * ask 3 simple questions to determine personality type
  */
 
-import { PersonalityType } from '../bloom-identity-skill-v2';
+import { PersonalityType } from '../types/personality';
 
 export interface ManualAnswer {
   question: string;

@@ -5,7 +5,7 @@
  * to determine supporter personality type through a 2x2 quadrant classification.
  */
 
-import { PersonalityType } from '../bloom-identity-skill-v2';
+import { PersonalityType } from '../types/personality';
 
 export interface UserData {
   sources: string[];
@@ -25,7 +25,12 @@ export interface UserData {
     tokens: any[];
     contracts: string[]; // Unique contracts interacted with
   };
-  conversationMemory?: string[];
+  conversationMemory?: {
+    topics: string[];
+    interests: string[];
+    preferences: string[];
+    history: string[];
+  };
 }
 
 export interface DimensionScores {
@@ -379,7 +384,10 @@ export class PersonalityAnalyzer {
     }
 
     if (userData.conversationMemory) {
-      textParts.push(...userData.conversationMemory);
+      textParts.push(...userData.conversationMemory.topics);
+      textParts.push(...userData.conversationMemory.interests);
+      textParts.push(...userData.conversationMemory.preferences);
+      textParts.push(...userData.conversationMemory.history);
     }
 
     return textParts.join(' ');
@@ -417,7 +425,7 @@ export class PersonalityAnalyzer {
     if (userData.twitter && userData.twitter.tweets.length > 10) confidence += 20;
     if (userData.farcaster && userData.farcaster.casts.length > 10) confidence += 15;
     if (userData.wallet && userData.wallet.transactions.length > 20) confidence += 25;
-    if (userData.conversationMemory && userData.conversationMemory.length > 5) confidence += 10;
+    if (userData.conversationMemory && userData.conversationMemory.history.length > 5) confidence += 10;
 
     return Math.min(confidence, 100);
   }

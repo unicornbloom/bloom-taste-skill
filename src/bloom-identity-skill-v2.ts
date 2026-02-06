@@ -15,14 +15,10 @@ import { CategoryMapper } from './analyzers/category-mapper';
 import { AgentWallet, AgentWalletInfo } from './blockchain/agent-wallet';
 import { TwitterShare, createTwitterShare } from './integrations/twitter-share';
 import { ClawHubClient, createClawHubClient } from './integrations/clawhub-client';
+import { PersonalityType } from './types/personality';
 
-export enum PersonalityType {
-  THE_VISIONARY = 'The Visionary',
-  THE_EXPLORER = 'The Explorer',
-  THE_CULTIVATOR = 'The Cultivator',
-  THE_OPTIMIZER = 'The Optimizer',
-  THE_INNOVATOR = 'The Innovator',
-}
+// Re-export PersonalityType for backwards compatibility
+export { PersonalityType };
 
 export interface IdentityData {
   personalityType: PersonalityType;
@@ -140,7 +136,7 @@ export class BloomIdentitySkillV2 {
         console.log('📊 Step 1: Attempting data collection...');
 
         const userData = await this.dataCollector.collect(userId, {
-          skipFarcaster: options?.skipFarcaster !== false, // Skip by default unless explicitly enabled
+          skipFarcaster: true, // Skip Farcaster by default
         });
 
         dataQuality = this.dataCollector.getDataQualityScore(userData);

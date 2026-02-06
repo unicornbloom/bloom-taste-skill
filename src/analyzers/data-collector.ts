@@ -103,12 +103,22 @@ export class DataCollector {
   /**
    * Collect conversation memory from OpenClaw
    */
-  private async collectConversationMemory(userId: string): Promise<string[]> {
+  private async collectConversationMemory(userId: string): Promise<{
+    topics: string[];
+    interests: string[];
+    preferences: string[];
+    history: string[];
+  }> {
     // TODO: Access OpenClaw's conversation memory API
-    return [
-      'User asked about AI tools',
-      'User interested in DeFi protocols',
-      'User mentioned wanting to optimize workflows',
-    ];
+    return {
+      topics: ['AI tools', 'DeFi protocols', 'workflow optimization'],
+      interests: ['productivity', 'blockchain', 'technology'],
+      preferences: ['automated', 'efficient', 'innovative'],
+      history: [
+        'User asked about AI tools',
+        'User interested in DeFi protocols',
+        'User mentioned wanting to optimize workflows',
+      ],
+    };
   }
 }

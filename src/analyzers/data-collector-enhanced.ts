@@ -45,6 +45,8 @@ export interface WalletData {
     timestamp: number;
     method?: string;
   }>;
+  // Unique contracts interacted with
+  contracts: string[];
   // DeFi Protocols
   defiProtocols: string[];  // e.g., ['Uniswap', 'Aave', 'Compound']
 }
@@ -309,6 +311,10 @@ export class EnhancedDataCollector {
           timestamp: Date.now() - 172800000,
           method: 'deposit',
         },
+      ],
+      contracts: [
+        '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', // Uniswap
+        '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9', // Aave
       ],
       defiProtocols: ['Uniswap', 'Aave', 'Compound', 'Curve', '1inch'],
     };
