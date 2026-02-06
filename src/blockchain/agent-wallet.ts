@@ -49,6 +49,7 @@ export class AgentWallet {
   private walletProvider: CdpEvmWalletProvider | null = null;
   private network: 'base-mainnet' | 'base-sepolia';
   private walletAddress: `0x${string}` | null = null;
+  private localAccount: PrivateKeyAccount | null = null;  // ⭐ For local wallet signing
 
   constructor(config: AgentWalletConfig) {
     // ⭐ userId is required for per-user wallets
@@ -204,6 +205,7 @@ export class AgentWallet {
       console.log(`📂 Loading existing local wallet...`);
       const account = privateKeyToAccount(existingWallet.privateKey as `0x${string}`);
       this.walletAddress = account.address;
+      this.localAccount = account;  // ⭐ Store for signing
 
       // Update last used
       await walletStorage.updateLastUsed(this.userId);
@@ -219,6 +221,7 @@ export class AgentWallet {
     const privateKey = generatePrivateKey();
     const account = privateKeyToAccount(privateKey);
     this.walletAddress = account.address;
+    this.localAccount = account;  // ⭐ Store for signing
 
     // Store wallet locally
     // TODO: Encrypt private key post-hackathon
@@ -459,16 +462,24 @@ export class AgentWallet {
 
   /**
    * Sign a message with agent's wallet
+   *
+   * Supports both CDP wallets and local wallets
    */
   async signMessage(message: string): Promise<string> {
-    if (!this.walletProvider) {
-      throw new Error('Agent wallet not initialized');
-    }
-
     try {
-      // Use CDP wallet provider to sign message
-      const signature = await this.walletProvider.signMessage(message);
-      return signature;
+      // CDP wallet (if available)
+      if (this.walletProvider) {
+        const signature = await this.walletProvider.signMessage(message);
+        return signature;
+      }
+
+      // Local wallet (viem)
+      if (this.localAccount) {
+        const signature = await this.localAccount.signMessage({ message });
+        return signature;
+      }
+
+      throw new Error('No wallet available for signing (neither CDP nor local)');
     } catch (error) {
       console.error('❌ Failed to sign message:', error);
       throw new Error(`Message signing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
