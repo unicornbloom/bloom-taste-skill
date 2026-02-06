@@ -4,6 +4,7 @@
  * OpenClaw skill wrapper for bloom-identity-skill-v2
  */
 
+import 'dotenv/config';
 import { Command } from 'commander';
 import { BloomIdentitySkillV2, ExecutionMode } from './bloom-identity-skill-v2';
 

@@ -17,6 +17,7 @@
 
 import { CdpEvmWalletProvider } from '@coinbase/agentkit';
 import { walletStorage } from './wallet-storage';
+import * as crypto from 'crypto';
 
 export interface AgentWalletConfig {
   userId: string;  // ⭐ Required for per-user wallets
@@ -314,8 +315,12 @@ export class AgentWallet {
     console.log(`📝 Registering agent with Bloom Protocol...`);
 
     try {
-      // Sign a message to prove wallet ownership
-      const message = `Bloom Agent Registration: ${agentName}`;
+      // Generate nonce and timestamp for message
+      const nonce = crypto.randomUUID();
+      const timestamp = Date.now();
+
+      // Sign a message to prove wallet ownership (include nonce and timestamp)
+      const message = `Bloom Agent Registration\nAgent: ${agentName}\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
       const signature = await this.signMessage(message);
 
       // Call Bloom backend API with identity data
@@ -331,6 +336,8 @@ export class AgentWallet {
           network: this.network,
           signature,
           message,
+          nonce,
+          timestamp,
           identityData, // Include identity card data
         }),
       });
