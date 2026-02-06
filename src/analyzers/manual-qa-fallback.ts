@@ -33,7 +33,7 @@ export const MANUAL_QUESTIONS = [
       { value: 'Crypto and Web3', personality: PersonalityType.THE_VISIONARY, weight: 10 },
       { value: 'Productivity tools', personality: PersonalityType.THE_OPTIMIZER, weight: 10 },
       { value: 'Learning new things', personality: PersonalityType.THE_EXPLORER, weight: 10 },
-      { value: 'Health and wellness', personality: PersonalityType.THE_MINDFUL, weight: 10 },
+      { value: 'Health and wellness', personality: PersonalityType.THE_CULTIVATOR, weight: 10 },
     ],
   },
   {
@@ -44,7 +44,7 @@ export const MANUAL_QUESTIONS = [
       { value: 'Following crypto projects', personality: PersonalityType.THE_VISIONARY, weight: 8 },
       { value: 'Optimizing my workflows', personality: PersonalityType.THE_OPTIMIZER, weight: 8 },
       { value: 'Taking online courses', personality: PersonalityType.THE_EXPLORER, weight: 8 },
-      { value: 'Meditation apps', personality: PersonalityType.THE_MINDFUL, weight: 8 },
+      { value: 'Meditation apps', personality: PersonalityType.THE_CULTIVATOR, weight: 8 },
     ],
   },
   {
@@ -55,7 +55,7 @@ export const MANUAL_QUESTIONS = [
       { value: 'DeFi and blockchain', personality: PersonalityType.THE_VISIONARY, weight: 6 },
       { value: 'Productivity and automation', personality: PersonalityType.THE_OPTIMIZER, weight: 6 },
       { value: 'Education and knowledge', personality: PersonalityType.THE_EXPLORER, weight: 6 },
-      { value: 'Health and wellness tech', personality: PersonalityType.THE_MINDFUL, weight: 6 },
+      { value: 'Health and wellness tech', personality: PersonalityType.THE_CULTIVATOR, weight: 6 },
     ],
   },
 ];
@@ -71,7 +71,7 @@ export class ManualQAFallback {
     const scores: Record<PersonalityType, number> = {
       [PersonalityType.THE_VISIONARY]: 0,
       [PersonalityType.THE_EXPLORER]: 0,
-      [PersonalityType.THE_MINDFUL]: 0,
+      [PersonalityType.THE_CULTIVATOR]: 0,
       [PersonalityType.THE_OPTIMIZER]: 0,
       [PersonalityType.THE_INNOVATOR]: 0,
     };
@@ -126,7 +126,7 @@ export class ManualQAFallback {
         mainCategories: ['Education', 'Learning', 'Knowledge', 'Research'],
         subCategories: ['Online Courses', 'EdTech', 'Books', 'Science'],
       },
-      [PersonalityType.THE_MINDFUL]: {
+      [PersonalityType.THE_CULTIVATOR]: {
         tagline: 'Growth starts within',
         description: 'A wellness advocate who believes in holistic growth. Champions mental, physical, and emotional health.',
         mainCategories: ['Wellness', 'Mental Health', 'Fitness', 'Mindfulness'],

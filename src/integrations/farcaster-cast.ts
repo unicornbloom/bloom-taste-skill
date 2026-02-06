@@ -56,7 +56,7 @@ Powered by @bloom @openclaw on @base
     const emojiMap = {
       [PersonalityType.THE_VISIONARY]: '💜',
       [PersonalityType.THE_EXPLORER]: '💚',
-      [PersonalityType.THE_MINDFUL]: '🩵',
+      [PersonalityType.THE_CULTIVATOR]: '🩵',
       [PersonalityType.THE_OPTIMIZER]: '🧡',
       [PersonalityType.THE_INNOVATOR]: '💙',
     };

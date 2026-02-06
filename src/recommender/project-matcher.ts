@@ -91,7 +91,7 @@ export class ProjectMatcher {
           matchScore: 87,
         },
       ],
-      [PersonalityType.THE_MINDFUL]: [
+      [PersonalityType.THE_CULTIVATOR]: [
         {
           name: 'MindfulSpace',
           description: 'Daily meditation and mindfulness companion',
