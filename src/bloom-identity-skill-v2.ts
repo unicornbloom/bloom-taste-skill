@@ -16,6 +16,7 @@ import { AgentWallet, AgentWalletInfo } from './blockchain/agent-wallet';
 import { TwitterShare, createTwitterShare } from './integrations/twitter-share';
 import { ClawHubClient, createClawHubClient } from './integrations/clawhub-client';
 import { PersonalityType } from './types/personality';
+import { generateAgentToken } from './utils/token-generator';
 
 // Re-export PersonalityType for backwards compatibility
 export { PersonalityType };
@@ -239,9 +240,20 @@ export class BloomIdentitySkillV2 {
         agentUserId = registration.agentUserId;
         console.log(`✅ Agent registered with identity card! User ID: ${agentUserId}`);
 
-        // Create permanent dashboard link (no expiry, no sensitive data in URL)
+        // Generate JWT token for agent authentication
+        console.log('🔐 Generating authentication token...');
+        const authToken = generateAgentToken({
+          walletAddress: agentWallet.address,
+          agentUserId,
+          identityData: identityData!,
+          dataQuality,
+          mode: usedManualQA ? 'manual' : 'data',
+        });
+        console.log(`✅ Authentication token generated`);
+
+        // Create authenticated dashboard URL with token
         const baseUrl = process.env.DASHBOARD_URL || 'https://preflight.bloomprotocol.ai';
-        dashboardUrl = `${baseUrl}/agent/${agentUserId}`;
+        dashboardUrl = `${baseUrl}/dashboard?token=${authToken}`;
         console.log(`✅ Dashboard link ready: ${dashboardUrl}`);
       } catch (error) {
         console.warn('⚠️  Bloom registration failed (skipping dashboard link):', error);
