@@ -218,7 +218,7 @@ export class BloomIdentitySkillV2 {
       // Step 4: Initialize Agent Wallet ⭐ Per-User Wallet
       console.log('🤖 Step 4: Initializing Agent Wallet...');
       const agentWallet = await this.initializeAgentWallet(userId);  // ⭐ Pass userId
-      console.log(`✅ Agent wallet ready: ${agentWallet.address}`);
+      console.log(`✅ Agent wallet deployed on ${agentWallet.network}`);
 
       // Step 5: Register agent and save identity card with Bloom (single atomic operation)
       let dashboardUrl: string | undefined;
@@ -259,7 +259,8 @@ export class BloomIdentitySkillV2 {
               skillName: r.skillName,
               matchScore: r.matchScore,
             })),
-            agentWallet: agentWallet.address,
+            // Wallet address removed for security - coming soon features
+            agentWallet: undefined,
           });
           console.log(`✅ Share link ready`);
         } catch (error) {

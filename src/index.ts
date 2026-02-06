@@ -75,9 +75,12 @@ function formatResult(result: any): void {
   });
 
   console.log(`🤖 Agent On-Chain Identity`);
-  console.log(`📍 Wallet: ${agentWallet.address.slice(0, 6)}...${agentWallet.address.slice(-4)}`);
-  console.log(`🔗 X402: ${agentWallet.x402Endpoint}`);
-  console.log(`⛓️  Network: ${agentWallet.network}\n`);
+  console.log(`✅ Your agent wallet has been deployed on ${agentWallet.network}!`);
+  console.log(`⚠️  Wallet features coming soon:`);
+  console.log(`   • Tipping skill creators`);
+  console.log(`   • Receiving X402 payments`);
+  console.log(`   • Wallet management\n`);
+  console.log(`🔒 Note: Please do not deposit funds yet - withdrawal features are in development.\n`);
 
   if (dashboardUrl) {
     console.log(`🌐 View full dashboard:`);
