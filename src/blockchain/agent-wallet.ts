@@ -18,6 +18,8 @@
 import { CdpEvmWalletProvider } from '@coinbase/agentkit';
 import { walletStorage } from './wallet-storage';
 import * as crypto from 'crypto';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import type { PrivateKeyAccount } from 'viem';
 
 export interface AgentWalletConfig {
   userId: string;  // ⭐ Required for per-user wallets
@@ -81,25 +83,31 @@ export class AgentWallet {
       const result = await this.withTimeout(
         this.initializeWalletInternal(),
         5000,
-        'CDP wallet initialization timed out (5s) - falling back to mock wallet'
+        'CDP wallet initialization timed out (5s) - falling back to local wallet'
       );
       return result;
     } catch (error) {
-      // Fallback to mock wallet for testing when CDP credentials are not available
+      // ⭐ NEW: Fallback to local wallet (real wallet, not mock!)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.warn(`⚠️  CDP unavailable (${errorMessage}), using mock wallet for testing`);
+      console.warn(`⚠️  CDP unavailable (${errorMessage}), using local wallet fallback`);
 
-      // Generate deterministic test wallet address per user (for testing only!)
-      const hash = this.simpleHash(this.userId);
-      this.walletAddress = ('0x' + hash.substring(0, 40)) as `0x${string}`;
+      try {
+        const localWallet = await this.createLocalWallet();
+        console.log(`✅ Local wallet created: ${localWallet.address}`);
+        return localWallet;
+      } catch (localError) {
+        // Last resort: mock wallet for testing
+        console.warn('⚠️  Local wallet creation failed, using mock wallet for testing');
+        const hash = this.simpleHash(this.userId);
+        this.walletAddress = ('0x' + hash.substring(0, 40)) as `0x${string}`;
+        console.log(`🧪 Mock wallet for ${this.userId}: ${this.walletAddress}`);
 
-      console.log(`🧪 Mock wallet for ${this.userId}: ${this.walletAddress}`);
-
-      return {
-        address: this.walletAddress,
-        network: this.network,
-        x402Endpoint: this.getX402Endpoint(),
-      };
+        return {
+          address: this.walletAddress,
+          network: this.network,
+          x402Endpoint: this.getX402Endpoint(),
+        };
+      }
     }
   }
 
@@ -169,6 +177,59 @@ export class AgentWallet {
     // Log wallet count for debugging
     const walletCount = await walletStorage.getWalletCount();
     console.log(`📊 Total wallets in storage: ${walletCount}`);
+
+    return {
+      address: this.walletAddress,
+      network: this.network,
+      x402Endpoint: this.getX402Endpoint(),
+    };
+  }
+
+  /**
+   * Create local wallet using viem (fallback when CDP unavailable)
+   *
+   * ⭐ NEW: Minimal local wallet implementation for hackathon
+   * - Real EVM wallet (not mock)
+   * - Stored locally for persistence
+   * - TODO: Add encryption post-hackathon
+   */
+  private async createLocalWallet(): Promise<AgentWalletInfo> {
+    console.log(`🏠 Creating local wallet for user ${this.userId}...`);
+
+    // Check if user already has a local wallet
+    const existingWallet = await walletStorage.getUserWallet(this.userId);
+
+    if (existingWallet && existingWallet.privateKey) {
+      // Load existing local wallet
+      console.log(`📂 Loading existing local wallet...`);
+      const account = privateKeyToAccount(existingWallet.privateKey as `0x${string}`);
+      this.walletAddress = account.address;
+
+      // Update last used
+      await walletStorage.updateLastUsed(this.userId);
+
+      return {
+        address: account.address,
+        network: this.network,
+        x402Endpoint: this.getX402Endpoint(),
+      };
+    }
+
+    // Generate new local wallet using viem
+    const privateKey = generatePrivateKey();
+    const account = privateKeyToAccount(privateKey);
+    this.walletAddress = account.address;
+
+    // Store wallet locally
+    // TODO: Encrypt private key post-hackathon
+    await walletStorage.saveUserWallet(
+      this.userId,
+      this.walletAddress,
+      this.network,
+      privateKey  // Storing unencrypted for now (hackathon MVP)
+    );
+
+    console.log(`✅ Local wallet created and stored: ${this.walletAddress}`);
 
     return {
       address: this.walletAddress,
