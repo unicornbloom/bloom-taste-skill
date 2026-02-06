@@ -16,7 +16,6 @@ import { AgentWallet, AgentWalletInfo } from './blockchain/agent-wallet';
 import { TwitterShare, createTwitterShare } from './integrations/twitter-share';
 import { ClawHubClient, createClawHubClient } from './integrations/clawhub-client';
 import { PersonalityType } from './types/personality';
-import { generateAgentToken } from './utils/token-generator';
 
 // Re-export PersonalityType for backwards compatibility
 export { PersonalityType };
@@ -240,16 +239,21 @@ export class BloomIdentitySkillV2 {
         agentUserId = registration.agentUserId;
         console.log(`✅ Agent registered with identity card! User ID: ${agentUserId}`);
 
-        // Generate JWT token for agent authentication
-        console.log('🔐 Generating authentication token...');
-        const authToken = generateAgentToken({
-          walletAddress: agentWallet.address,
+        // Generate JWT token for agent authentication with wallet signature
+        console.log('🔐 Generating authentication token with wallet signature...');
+        const authToken = await this.agentWallet!.generateAuthToken({
           agentUserId,
-          identityData: identityData!,
-          dataQuality,
-          mode: usedManualQA ? 'manual' : 'data',
+          identityData: {
+            personalityType: identityData!.personalityType,
+            tagline: identityData!.customTagline,
+            description: identityData!.customDescription,
+            mainCategories: identityData!.mainCategories,
+            subCategories: identityData!.subCategories,
+            confidence: dataQuality,
+            mode: usedManualQA ? 'manual' : 'data',
+          },
         });
-        console.log(`✅ Authentication token generated`);
+        console.log(`✅ Authentication token generated with signature`);
 
         // Create authenticated dashboard URL with token
         const baseUrl = process.env.DASHBOARD_URL || 'https://preflight.bloomprotocol.ai';

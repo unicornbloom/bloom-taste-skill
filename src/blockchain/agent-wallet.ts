@@ -381,7 +381,18 @@ export class AgentWallet {
    * Creates a secure JWT token with signature verification
    * for Agent to access Bloom Dashboard
    */
-  async generateAuthToken(): Promise<string> {
+  async generateAuthToken(options?: {
+    agentUserId?: number;
+    identityData?: {
+      personalityType: string;
+      tagline: string;
+      description: string;
+      mainCategories: string[];
+      subCategories: string[];
+      confidence: number;
+      mode: 'data' | 'manual';
+    };
+  }): Promise<string> {
     if (!this.walletAddress) {
       throw new Error('Agent wallet not initialized');
     }
@@ -407,8 +418,8 @@ export class AgentWallet {
     // Sign the message
     const signature = await this.signMessage(message);
 
-    // Create JWT payload
-    const payload = {
+    // Create JWT payload with optional identity data
+    const payload: any = {
       type: 'agent',
       version: '1.0',
       address: this.walletAddress,
@@ -419,6 +430,22 @@ export class AgentWallet {
       signature,
       signedMessage: message,
     };
+
+    // Add optional fields
+    if (options?.agentUserId) {
+      payload.agentUserId = options.agentUserId;
+    }
+    if (options?.identityData) {
+      payload.identity = {
+        personalityType: options.identityData.personalityType,
+        tagline: options.identityData.tagline,
+        description: options.identityData.description,
+        mainCategories: options.identityData.mainCategories,
+        subCategories: options.identityData.subCategories,
+        confidence: options.identityData.confidence,
+        mode: options.identityData.mode,
+      };
+    }
 
     // Sign JWT
     const token = jwt.sign(payload, process.env.JWT_SECRET || 'dev-secret-change-in-production', {
