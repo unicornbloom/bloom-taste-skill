@@ -121,6 +121,11 @@ export class BloomIdentitySkillV2 {
     dashboardUrl?: string;
     shareUrl?: string;
     dataQuality?: number;
+    dimensions?: {
+      conviction: number;
+      intuition: number;
+      contribution: number;
+    };
     error?: string;
     needsManualInput?: boolean;
     manualQuestions?: string;
@@ -134,6 +139,7 @@ export class BloomIdentitySkillV2 {
       let identityData: IdentityData | null = null;
       let dataQuality = 0;
       let usedManualQA = false;
+      let dimensions: { conviction: number; intuition: number; contribution: number } | undefined;
 
       if (mode !== ExecutionMode.MANUAL) {
         console.log('📊 Step 1: Attempting data collection...');
@@ -166,6 +172,9 @@ export class BloomIdentitySkillV2 {
               : this.categoryMapper.getMainCategories(analysis.personalityType),
             subCategories: analysis.detectedInterests,
           };
+
+          // ⭐ Capture 2x2 metrics
+          dimensions = analysis.dimensions;
 
           console.log(`✅ Analysis complete: ${identityData.personalityType}`);
         } else {
@@ -239,6 +248,7 @@ export class BloomIdentitySkillV2 {
           subCategories: identityData!.subCategories,
           confidence: dataQuality,
           mode: usedManualQA ? 'manual' : 'data',
+          dimensions, // ⭐ Include 2x2 metrics
         });
         agentUserId = registration.agentUserId;
         console.log(`✅ Agent registered with identity card! User ID: ${agentUserId}`);
@@ -285,6 +295,7 @@ export class BloomIdentitySkillV2 {
         dashboardUrl,
         shareUrl,
         dataQuality,
+        dimensions, // ⭐ Include 2x2 metrics in result
       };
     } catch (error) {
       console.error('❌ Error generating Bloom Identity:', error);
@@ -426,10 +437,21 @@ export const bloomIdentitySkillV2 = {
  * Format success message for user
  */
 function formatSuccessMessage(result: any): string {
-  const { identityData, recommendations, mode, dataQuality } = result;
+  const { identityData, recommendations, mode, dimensions } = result;
 
   const modeEmoji = mode === 'manual' ? '📝' : '🤖';
-  const qualityText = dataQuality ? ` (${dataQuality}% confidence)` : '';
+
+  // Format 2x2 metrics display
+  let metricsDisplay = '';
+  if (dimensions) {
+    metricsDisplay = `
+📊 **2x2 Metrics**
+   Conviction: ${dimensions.conviction}/100
+   Intuition: ${dimensions.intuition}/100
+   Contribution: ${dimensions.contribution}/100
+
+`;
+  }
 
   return `
 🎉 **Your Bloom Identity Card is Ready!** ${modeEmoji}
@@ -437,14 +459,14 @@ function formatSuccessMessage(result: any): string {
 ${result.dashboardUrl ? `🌐 **View Your Card**\n→ ${result.dashboardUrl}\n` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${getPersonalityEmoji(identityData.personalityType)} **${identityData.personalityType}**${qualityText}
+${getPersonalityEmoji(identityData.personalityType)} **${identityData.personalityType}**
 💬 *"${identityData.customTagline}"*
 
 ${identityData.customDescription}
 
 **Categories**: ${identityData.mainCategories.join(', ')}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${metricsDisplay}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🎯 **Matching Skills** (${recommendations.length})
 
@@ -453,7 +475,8 @@ ${recommendations
   .map((s: any, i: number) => {
     const creatorInfo = s.creator ? ` • ${s.creator}` : '';
     return `${i + 1}. **${s.skillName}** (${s.matchScore}%)${creatorInfo}
-   ${s.description}`;
+   ${s.description}
+   → ${s.url}`;
   })
   .join('\n\n')}
 

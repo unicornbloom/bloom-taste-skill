@@ -323,6 +323,11 @@ export class AgentWallet {
       subCategories: string[];
       confidence: number;
       mode: 'data' | 'manual';
+      dimensions?: {
+        conviction: number;
+        intuition: number;
+        contribution: number;
+      };
     }
   ): Promise<{ agentUserId: number; x402Endpoint: string }> {
     if (!this.walletAddress) {

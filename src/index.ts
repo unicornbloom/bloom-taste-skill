@@ -54,10 +54,9 @@ async function main() {
 }
 
 function formatResult(result: any): void {
-  const { identityData, agentWallet, recommendations, mode, dataQuality, dashboardUrl } = result;
+  const { identityData, agentWallet, recommendations, mode, dimensions, dashboardUrl } = result;
 
   const modeEmoji = mode === 'manual' ? '📝' : '🤖';
-  const qualityText = dataQuality ? ` (${dataQuality}% confidence)` : '';
 
   console.log(`\n🎉 Bloom Identity Card Ready! ${modeEmoji}\n`);
 
@@ -67,16 +66,25 @@ function formatResult(result: any): void {
     console.log(`   ${dashboardUrl}\n`);
   }
 
-  console.log(`${getPersonalityEmoji(identityData.personalityType)} ${identityData.personalityType}${qualityText}`);
+  console.log(`${getPersonalityEmoji(identityData.personalityType)} ${identityData.personalityType}`);
   console.log(`💬 "${identityData.customTagline}"\n`);
   console.log(`${identityData.customDescription}\n`);
   console.log(`Categories: ${identityData.mainCategories.join(', ')}\n`);
+
+  // 2x2 Metrics
+  if (dimensions) {
+    console.log(`📊 2x2 Metrics:`);
+    console.log(`   Conviction: ${dimensions.conviction}/100`);
+    console.log(`   Intuition: ${dimensions.intuition}/100`);
+    console.log(`   Contribution: ${dimensions.contribution}/100\n`);
+  }
 
   console.log(`🎯 Matching Skills (${recommendations.length}):`);
   recommendations.slice(0, 5).forEach((skill: any, i: number) => {
     const creatorInfo = skill.creator ? ` • ${skill.creator}` : '';
     console.log(`${i + 1}. ${skill.skillName} (${skill.matchScore}%)${creatorInfo}`);
-    console.log(`   ${skill.description}\n`);
+    console.log(`   ${skill.description}`);
+    console.log(`   → ${skill.url}\n`);
   });
 
   console.log(`🤖 Agent Wallet: ${agentWallet.network}`);
