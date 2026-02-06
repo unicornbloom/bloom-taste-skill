@@ -69,88 +69,109 @@ export class AgentWallet {
    * 1. Check if user already has a wallet (stored)
    * 2. If yes → Import existing wallet
    * 3. If no → Create new wallet and store it
+   *
+   * ⭐ Performance: 5-second timeout prevents long waits when CDP is unavailable
    */
   async initialize(): Promise<AgentWalletInfo> {
     console.log(`🤖 Initializing Agent Wallet for user ${this.userId} on ${this.network}...`);
 
     try {
-      // Map network name to CDP format
-      const cdpNetwork = this.network === 'base-mainnet' ? 'base' : 'base-sepolia';
+      // ⭐ Add 5-second timeout to prevent long waits
+      const result = await this.withTimeout(
+        this.initializeWalletInternal(),
+        5000,
+        'CDP wallet initialization timed out (5s) - falling back to mock wallet'
+      );
+      return result;
+    } catch (error) {
+      // Fallback to mock wallet for testing when CDP credentials are not available
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`⚠️  CDP unavailable (${errorMessage}), using mock wallet for testing`);
 
-      // ⭐ Step 1: Check if user already has a wallet
-      const existingWallet = await walletStorage.getUserWallet(this.userId);
+      // Generate deterministic test wallet address per user (for testing only!)
+      const hash = this.simpleHash(this.userId);
+      this.walletAddress = '0x' + hash.substring(0, 40);
 
-      if (existingWallet && existingWallet.network === this.network) {
-        // ⭐ Import existing wallet
-        console.log(`📂 Loading existing wallet for user ${this.userId}...`);
-
-        this.walletProvider = await CdpWalletProvider.configureWithWallet({
-          network: cdpNetwork as 'base' | 'base-sepolia',
-          cdpWalletData: existingWallet.walletData,  // ⭐ Import stored wallet
-        });
-
-        this.walletAddress = this.walletProvider.getAddress();
-
-        // Update last used timestamp
-        await walletStorage.updateLastUsed(this.userId);
-
-        console.log(`✅ Existing wallet loaded: ${this.walletAddress}`);
-
-      } else {
-        // ⭐ Create new wallet
-        console.log(`🆕 Creating new wallet for user ${this.userId}...`);
-
-        this.walletProvider = await CdpWalletProvider.configureWithWallet({
-          network: cdpNetwork as 'base' | 'base-sepolia',
-          // No cdpWalletData = creates new wallet
-        });
-
-        this.walletAddress = this.walletProvider.getAddress();
-
-        // ⭐ Export and store wallet data
-        const walletData = await this.walletProvider.exportWallet();
-        await walletStorage.saveUserWallet(
-          this.userId,
-          walletData,
-          this.walletAddress,
-          this.network
-        );
-
-        console.log(`✅ New wallet created and stored: ${this.walletAddress}`);
-      }
-
-      // Log wallet count for debugging
-      const walletCount = await walletStorage.getWalletCount();
-      console.log(`📊 Total wallets in storage: ${walletCount}`);
+      console.log(`🧪 Mock wallet for ${this.userId}: ${this.walletAddress}`);
 
       return {
         address: this.walletAddress,
         network: this.network,
         x402Endpoint: this.getX402Endpoint(),
       };
-
-    } catch (error) {
-      // Fallback to mock wallet for testing when CDP credentials are not available
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      if (errorMessage.includes('coinbase_cloud_api_key.json') || errorMessage.includes('Invalid configuration')) {
-        console.warn('⚠️  CDP credentials not found, using mock wallet for testing');
-
-        // Generate deterministic test wallet address per user (for testing only!)
-        const hash = this.simpleHash(this.userId);
-        this.walletAddress = '0x' + hash.substring(0, 40);
-
-        console.log(`🧪 Mock wallet for ${this.userId}: ${this.walletAddress}`);
-
-        return {
-          address: this.walletAddress,
-          network: this.network,
-          x402Endpoint: this.getX402Endpoint(),
-        };
-      }
-
-      console.error('❌ Failed to initialize agent wallet:', error);
-      throw new Error(`Agent wallet initialization failed: ${errorMessage}`);
     }
+  }
+
+  /**
+   * Internal wallet initialization logic (wrapped with timeout in initialize())
+   */
+  private async initializeWalletInternal(): Promise<AgentWalletInfo> {
+    // Map network name to CDP format
+    const cdpNetwork = this.network === 'base-mainnet' ? 'base' : 'base-sepolia';
+
+    // ⭐ Step 1: Check if user already has a wallet
+    const existingWallet = await walletStorage.getUserWallet(this.userId);
+
+    if (existingWallet && existingWallet.network === this.network) {
+      // ⭐ Import existing wallet
+      console.log(`📂 Loading existing wallet for user ${this.userId}...`);
+
+      this.walletProvider = await CdpWalletProvider.configureWithWallet({
+        network: cdpNetwork as 'base' | 'base-sepolia',
+        cdpWalletData: existingWallet.walletData,  // ⭐ Import stored wallet
+      });
+
+      this.walletAddress = this.walletProvider.getAddress();
+
+      // Update last used timestamp
+      await walletStorage.updateLastUsed(this.userId);
+
+      console.log(`✅ Existing wallet loaded: ${this.walletAddress}`);
+
+    } else {
+      // ⭐ Create new wallet
+      console.log(`🆕 Creating new wallet for user ${this.userId}...`);
+
+      this.walletProvider = await CdpWalletProvider.configureWithWallet({
+        network: cdpNetwork as 'base' | 'base-sepolia',
+        // No cdpWalletData = creates new wallet
+      });
+
+      this.walletAddress = this.walletProvider.getAddress();
+
+      // ⭐ Export and store wallet data
+      const walletData = await this.walletProvider.exportWallet();
+      await walletStorage.saveUserWallet(
+        this.userId,
+        walletData,
+        this.walletAddress,
+        this.network
+      );
+
+      console.log(`✅ New wallet created and stored: ${this.walletAddress}`);
+    }
+
+    // Log wallet count for debugging
+    const walletCount = await walletStorage.getWalletCount();
+    console.log(`📊 Total wallets in storage: ${walletCount}`);
+
+    return {
+      address: this.walletAddress,
+      network: this.network,
+      x402Endpoint: this.getX402Endpoint(),
+    };
+  }
+
+  /**
+   * Wrap async operation with timeout
+   */
+  private withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs)
+      ),
+    ]);
   }
 
   /**
@@ -395,8 +416,10 @@ export class AgentWallet {
  * Create and initialize an agent wallet
  *
  * Convenience function for quick setup
+ *
+ * ⭐ userId is required for per-user wallet management
  */
-export async function createAgentWallet(config: AgentWalletConfig = {}): Promise<AgentWallet> {
+export async function createAgentWallet(config: AgentWalletConfig): Promise<AgentWallet> {
   const wallet = new AgentWallet(config);
   await wallet.initialize();
   return wallet;

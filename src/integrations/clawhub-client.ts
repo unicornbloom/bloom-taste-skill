@@ -67,21 +67,26 @@ export class ClawHubClient {
   }
 
   /**
-   * Search multiple categories and merge results
+   * Search multiple categories and merge results (parallel execution for speed)
    */
   async searchMultipleCategories(categories: string[], limitPerCategory: number = 3): Promise<ClawHubSkill[]> {
-    console.log(`🔍 Searching ${categories.length} categories...`);
+    console.log(`🔍 Searching ${categories.length} categories in parallel...`);
 
+    // Execute all searches in parallel for better performance
+    const searchPromises = categories.map(category =>
+      this.searchSkills({
+        query: category,
+        limit: limitPerCategory,
+      })
+    );
+
+    const resultsArrays = await Promise.all(searchPromises);
+
+    // Flatten and deduplicate by slug
     const allResults: ClawHubSkill[] = [];
     const seenSlugs = new Set<string>();
 
-    for (const category of categories) {
-      const results = await this.searchSkills({
-        query: category,
-        limit: limitPerCategory,
-      });
-
-      // Deduplicate by slug
+    for (const results of resultsArrays) {
       for (const skill of results) {
         if (!seenSlugs.has(skill.slug)) {
           seenSlugs.add(skill.slug);
