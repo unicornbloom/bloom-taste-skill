@@ -73,10 +73,17 @@ function formatResult(result: any): void {
 
   // 2x2 Metrics
   if (dimensions) {
+    const isCultivator = identityData.personalityType === 'The Cultivator';
+
     console.log(`📊 2x2 Metrics:`);
-    console.log(`   Conviction: ${dimensions.conviction}/100`);
-    console.log(`   Intuition: ${dimensions.intuition}/100`);
-    console.log(`   Contribution: ${dimensions.contribution}/100\n`);
+    console.log(`   Conviction ${dimensions.conviction} ← → Curiosity ${100 - dimensions.conviction}`);
+    console.log(`   Intuition ${dimensions.intuition} ← → Analysis ${100 - dimensions.intuition}`);
+
+    // Only show contribution for The Cultivator
+    if (isCultivator) {
+      console.log(`   Contribution: ${dimensions.contribution}/100`);
+    }
+    console.log('');
   }
 
   console.log(`🎯 Matching Skills (${recommendations.length}):`);

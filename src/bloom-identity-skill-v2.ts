@@ -444,12 +444,14 @@ function formatSuccessMessage(result: any): string {
   // Format 2x2 metrics display
   let metricsDisplay = '';
   if (dimensions) {
+    const isCultivator = identityData.personalityType === 'The Cultivator';
+    const contributionLine = isCultivator ? `   Contribution: ${dimensions.contribution}/100\n` : '';
+
     metricsDisplay = `
 📊 **2x2 Metrics**
-   Conviction: ${dimensions.conviction}/100
-   Intuition: ${dimensions.intuition}/100
-   Contribution: ${dimensions.contribution}/100
-
+   Conviction ${dimensions.conviction} ← → Curiosity ${100 - dimensions.conviction}
+   Intuition ${dimensions.intuition} ← → Analysis ${100 - dimensions.intuition}
+${contributionLine}
 `;
   }
 
