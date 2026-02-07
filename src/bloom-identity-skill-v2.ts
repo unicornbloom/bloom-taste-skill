@@ -580,23 +580,45 @@ ${identityData.subCategories && identityData.subCategories.length > 0
   : ''}
 ${metricsDisplay}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎯 **Matching Skills** (${recommendations.length})
+🎯 **Recommended for You** (${recommendations.length} total)
 
-${recommendations
-  .slice(0, 5)
-  .map((s: any, i: number) => {
-    const creatorInfo = s.creator ? ` • ${s.creator}` : '';
-    return `${i + 1}. **${s.skillName}** (${s.matchScore}%)${creatorInfo}
+${(() => {
+  const clawHubSkills = recommendations.filter((r: any) => r.source === 'ClawHub' || !r.source);
+  const githubRepos = recommendations.filter((r: any) => r.source === 'GitHub');
+
+  let output = '';
+
+  // ClawHub Skills (top 3)
+  if (clawHubSkills.length > 0) {
+    output += '🦞 **ClawHub Skills**\n\n';
+    output += clawHubSkills.slice(0, 3).map((s: any, i: number) => {
+      const creatorInfo = s.creator ? ` • by @${s.creator}` : '';
+      return `${i + 1}. **${s.skillName}**${creatorInfo}
    ${s.description}
    → ${s.url}`;
-  })
-  .join('\n\n')}
+    }).join('\n\n');
+  }
+
+  // GitHub Repositories (top 3)
+  if (githubRepos.length > 0) {
+    if (output) output += '\n\n';
+    output += '🐙 **GitHub Repositories**\n\n';
+    output += githubRepos.slice(0, 3).map((s: any, i: number) => {
+      const starsInfo = s.stars ? ` ⭐ ${s.stars >= 1000 ? `${(s.stars / 1000).toFixed(1)}k` : s.stars}` : '';
+      const langInfo = s.language ? ` [${s.language}]` : '';
+      return `${i + 1}. **${s.skillName}**${starsInfo}${langInfo}
+   ${s.description}
+   → ${s.url}`;
+    }).join('\n\n');
+  }
+
+  return output;
+})()}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🤖 **Your Agent is Ready**
-Your agent now has its own wallet on ${result.agentWallet?.network || 'Base'}!
-Coming soon: tip skills, fund missions, and more autonomous actions. Stay tuned! 🚀
+🤖 **Your Agent Wallet is Ready**
+More functions on tipping, recommendations, and autonomous actions will come soon! 🚀
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
