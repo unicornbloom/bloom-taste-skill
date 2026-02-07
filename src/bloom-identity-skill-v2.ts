@@ -254,11 +254,26 @@ export class BloomIdentitySkillV2 {
         agentUserId = registration.agentUserId;
         console.log(`✅ Agent registered with identity card! User ID: ${agentUserId}`);
 
-        // Create permanent dashboard URL using agentUserId
-        console.log('🔗 Creating permanent dashboard URL...');
+        // Generate auth token for dashboard access
+        console.log('🔑 Generating authentication token...');
+        const authToken = await this.agentWallet!.generateAuthToken({
+          agentUserId,
+          identityData: {
+            personalityType: identityData!.personalityType,
+            tagline: identityData!.customTagline,
+            description: identityData!.customDescription,
+            mainCategories: identityData!.mainCategories,
+            subCategories: identityData!.subCategories,
+            confidence: dataQuality,
+            mode: usedManualQA ? 'manual' : 'data',
+          },
+        });
+
+        // Create permanent dashboard URL with auth token
+        console.log('🔗 Creating authenticated dashboard URL...');
         const baseUrl = process.env.DASHBOARD_URL || 'https://preflight.bloomprotocol.ai';
-        dashboardUrl = `${baseUrl}/agents/${agentUserId}`;
-        console.log(`✅ Permanent URL created: ${dashboardUrl}`);
+        dashboardUrl = `${baseUrl}/agents/${agentUserId}?token=${authToken}`;
+        console.log(`✅ Authenticated URL created`);
       } catch (error) {
         console.warn('⚠️  Bloom registration failed (skipping dashboard link):', error);
       }
