@@ -208,7 +208,7 @@ function formatResult(result: any): void {
       githubRepos.slice(0, 7).forEach((repo: any, i: number) => {
         const stars = repo.stars ? ` ⭐ ${formatStars(repo.stars)}` : '';
         const language = repo.language ? ` · ${repo.language}` : '';
-        console.log(`**${i + 1}. [${repo.skillName}](${repo.url})** (${repo.matchScore}% match)${stars}${language}`);
+        console.log(`**${i + 1}. [${repo.skillName}](${repo.url})**${stars}${language}`);
         console.log(`   ${repo.description}\n`);
       });
     }
@@ -218,7 +218,7 @@ function formatResult(result: any): void {
       console.log('### 🔧 ClawHub Skills\n');
       clawHubSkills.slice(0, 7).forEach((skill: any, i: number) => {
         const creatorInfo = skill.creator ? ` *by @${skill.creator}*` : '';
-        console.log(`**${i + 1}. [${skill.skillName}](${skill.url})** (${skill.matchScore}% match)${creatorInfo}`);
+        console.log(`**${i + 1}. [${skill.skillName}](${skill.url})**${creatorInfo}`);
         console.log(`   ${skill.description}\n`);
       });
     }
