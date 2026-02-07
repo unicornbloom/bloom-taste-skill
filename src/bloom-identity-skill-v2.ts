@@ -427,9 +427,18 @@ export const bloomIdentitySkillV2 = {
       };
     }
 
+    // Sanitize result: Remove wallet address for privacy
+    const sanitizedResult = {
+      ...result,
+      agentWallet: result.agentWallet ? {
+        network: result.agentWallet.network,
+        hasWallet: true, // Flag that wallet exists, but don't expose address
+      } : undefined,
+    };
+
     return {
       message: formatSuccessMessage(result),
-      data: result,
+      data: sanitizedResult,
     };
   },
 };
@@ -484,6 +493,12 @@ ${recommendations
    → ${s.url}`;
   })
   .join('\n\n')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🤖 **Your Agent is Ready**
+Your agent now has its own wallet on ${result.agentWallet?.network || 'Base'}!
+Coming soon: tip skills, fund missions, and more autonomous actions. Stay tuned! 🚀
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
