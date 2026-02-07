@@ -112,16 +112,13 @@ function formatResult(result: any): void {
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-  // Wallet info (real wallet data)
-  console.log('🤖 Agent On-Chain Identity\n');
-  console.log(`📍 Wallet: ${agentWallet.walletAddress || '[auto-generated]'}`);
-  if (agentWallet.x402Endpoint) {
-    console.log(`🔗 X402: ${agentWallet.x402Endpoint}`);
-  }
-  console.log(`⛓️  Network: ${agentWallet.network}`);
-  console.log('');
-  console.log('⚠️  Features coming soon (tipping, payments, management)');
-  console.log('🔒 Do not deposit funds - withdrawals not ready\n');
+  // Wallet info with marketing message
+  console.log('🤖 Your Agent Wallet Created\n');
+  console.log(`   Network: ${agentWallet?.network || 'Base'}`);
+  console.log('   Status: ✅ Wallet generated and registered\n');
+  console.log('   💡 Use your agent wallet to tip skill creators!');
+  console.log('   ⚠️  Tipping, payments, and management features coming soon');
+  console.log('   🔒 Do not deposit funds - withdrawals not ready yet\n');
 
   console.log('═══════════════════════════════════════════════════════\n');
   console.log(`${mode === 'manual' ? '📝 Q&A' : '🤖 On-chain'} • @openclaw @coinbase @base 🦞\n`);

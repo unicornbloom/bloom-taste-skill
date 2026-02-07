@@ -91,11 +91,24 @@ You'll receive:
 
 ## Implementation
 
-This skill wraps the Bloom Identity analyzer and provides conversation context directly:
+This skill reads the complete OpenClaw session history (last ~120 messages) for comprehensive analysis:
 
 ```bash
-# The bot collects current conversation and pipes to analyzer
-<conversation-context> | npx tsx /path/to/bloom-identity-skill/scripts/run-from-context.ts --user-id $OPENCLAW_USER_ID
+# Option 1: From session file (recommended - full context)
+npx tsx scripts/run-from-session.ts ~/.openclaw/agents/main/sessions/<SessionId>.jsonl <userId>
+
+# Option 2: From piped context (quick test)
+<conversation-context> | npx tsx scripts/run-from-context.ts --user-id <userId>
+```
+
+### Finding Your Session File
+
+```bash
+# Session files location
+~/.openclaw/agents/<agentId>/sessions/<SessionId>.jsonl
+
+# Example
+~/.openclaw/agents/main/sessions/abc123def456.jsonl
 ```
 
 ## Installation
