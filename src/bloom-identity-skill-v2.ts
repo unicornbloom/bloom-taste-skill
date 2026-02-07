@@ -302,19 +302,11 @@ export class BloomIdentitySkillV2 {
         agentUserId = registration.agentUserId;
         console.log(`✅ Agent registered with identity card! User ID: ${agentUserId}`);
 
-        // Generate authentication token for dashboard access
-        console.log('🔑 Generating authentication token...');
-        const authToken = await this.agentWallet!.generateAuthToken({
-          agentUserId,
-          expiresIn: '7d', // Token valid for 7 days
-        });
-        console.log('✅ Authentication token generated');
-
-        // Create authenticated dashboard URL (auto-login with token)
-        console.log('🔗 Creating dashboard URL with authentication...');
+        // Create permanent public dashboard URL (no auth required)
+        console.log('🔗 Creating public dashboard URL...');
         const baseUrl = process.env.DASHBOARD_URL || 'https://preflight.bloomprotocol.ai';
-        dashboardUrl = `${baseUrl}/dashboard?token=${authToken}`;
-        console.log(`✅ Dashboard URL created: ${dashboardUrl}`);
+        dashboardUrl = `${baseUrl}/agents/${agentUserId}`;
+        console.log(`✅ Public URL created: ${dashboardUrl}`);
       } catch (error) {
         console.warn('⚠️  Bloom registration failed (skipping dashboard link):', error);
       }
@@ -346,7 +338,7 @@ export class BloomIdentitySkillV2 {
       // Prepare share data for frontend buttons
       const shareData = dashboardUrl ? {
         url: dashboardUrl,
-        text: `Just discovered my Bloom Identity: ${identityData!.personalityType}! 🌸\n\nView my personalized identity card and skill recommendations 🚀`,
+        text: `Just discovered my Bloom Identity: ${identityData!.personalityType}! 🌸\n\nCheck out my personalized skill recommendations on @bloomprotocol 🚀`,
         hashtags: ['BloomProtocol', 'Web3Identity', 'OpenClaw'],
       } : undefined;
 
