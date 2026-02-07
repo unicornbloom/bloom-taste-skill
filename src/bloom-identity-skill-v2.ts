@@ -15,6 +15,7 @@ import { CategoryMapper } from './analyzers/category-mapper';
 import { AgentWallet, AgentWalletInfo } from './blockchain/agent-wallet';
 import { TwitterShare, createTwitterShare } from './integrations/twitter-share';
 import { ClawHubClient, createClawHubClient } from './integrations/clawhub-client';
+import { GitHubRecommendations } from './github-recommendations';
 import { PersonalityType } from './types/personality';
 
 // Re-export PersonalityType for backwards compatibility
@@ -36,7 +37,10 @@ export interface SkillRecommendation {
   categories: string[];
   matchScore: number;
   creator?: string;
-  creatorUserId?: number;
+  creatorUserId?: number | string;
+  source?: 'ClawHub' | 'GitHub';
+  stars?: number;
+  language?: string;
 }
 
 /**
@@ -59,6 +63,7 @@ export class BloomIdentitySkillV2 {
   private agentWallet: AgentWallet | null = null;
   private twitterShare: TwitterShare;
   private clawHubClient: ClawHubClient;
+  private githubRecommendations: GitHubRecommendations;
 
   constructor() {
     this.personalityAnalyzer = new PersonalityAnalyzer();
@@ -67,6 +72,7 @@ export class BloomIdentitySkillV2 {
     this.categoryMapper = new CategoryMapper();
     this.twitterShare = createTwitterShare();
     this.clawHubClient = createClawHubClient();
+    this.githubRecommendations = new GitHubRecommendations(process.env.GITHUB_TOKEN);
   }
 
   /**
@@ -368,15 +374,45 @@ export class BloomIdentitySkillV2 {
   }
 
   /**
-   * Recommend OpenClaw Skills based on identity
+   * Recommend skills from both ClawHub and GitHub
    *
-   * Uses ClawHub registry with vector search
+   * Searches ClawHub for OpenClaw skills and GitHub for relevant repositories,
+   * then merges and ranks results by match score.
    */
   private async recommendSkills(identity: IdentityData): Promise<SkillRecommendation[]> {
-    console.log(`🔍 Searching ClawHub for skills matching ${identity.personalityType}...`);
+    console.log(`🔍 Searching for recommendations matching ${identity.personalityType}...`);
 
     try {
-      // Get recommendations from ClawHub
+      // Search both sources in parallel
+      const [clawHubSkills, githubRepos] = await Promise.all([
+        this.getClawHubRecommendations(identity),
+        this.getGitHubRecommendations(identity),
+      ]);
+
+      // Merge results
+      const allRecommendations = [...clawHubSkills, ...githubRepos];
+
+      // Sort by match score and take top 10
+      const topRecommendations = allRecommendations
+        .sort((a, b) => b.matchScore - a.matchScore)
+        .slice(0, 10);
+
+      console.log(`✅ Found ${clawHubSkills.length} ClawHub + ${githubRepos.length} GitHub recommendations`);
+      console.log(`   Returning top ${topRecommendations.length} overall`);
+
+      return topRecommendations;
+
+    } catch (error) {
+      console.error('❌ Recommendation search failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get recommendations from ClawHub
+   */
+  private async getClawHubRecommendations(identity: IdentityData): Promise<SkillRecommendation[]> {
+    try {
       const clawHubSkills = await this.clawHubClient.getRecommendations({
         mainCategories: identity.mainCategories,
         subCategories: identity.subCategories,
@@ -384,7 +420,7 @@ export class BloomIdentitySkillV2 {
       });
 
       // Convert ClawHub skills to our format and calculate enhanced match scores
-      const recommendations: SkillRecommendation[] = clawHubSkills.map(skill => {
+      return clawHubSkills.map(skill => {
         // Base score from ClawHub similarity (0-100)
         let matchScore = skill.similarityScore * 100;
 
@@ -411,19 +447,24 @@ export class BloomIdentitySkillV2 {
           matchScore: Math.min(matchScore, 100),
           creator: skill.creator,
           creatorUserId: skill.creatorUserId,
+          source: 'ClawHub' as const,
         };
-      });
-
-      // Sort by enhanced match score
-      const sortedRecommendations = recommendations
-        .sort((a, b) => b.matchScore - a.matchScore)
-        .slice(0, 10);
-
-      console.log(`✅ Returning top ${sortedRecommendations.length} recommendations`);
-      return sortedRecommendations;
+      }).sort((a, b) => b.matchScore - a.matchScore);
 
     } catch (error) {
-      console.error('❌ ClawHub search failed, falling back to empty list:', error);
+      console.error('⚠️  ClawHub search failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get recommendations from GitHub
+   */
+  private async getGitHubRecommendations(identity: IdentityData): Promise<SkillRecommendation[]> {
+    try {
+      return await this.githubRecommendations.getRecommendations(identity, 10);
+    } catch (error) {
+      console.error('⚠️  GitHub search failed:', error);
       return [];
     }
   }

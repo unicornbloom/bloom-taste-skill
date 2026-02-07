@@ -407,7 +407,10 @@ export class AgentWallet {
         categories: string[];
         matchScore: number;
         creator?: string;
-        creatorUserId?: number;
+        creatorUserId?: number | string;
+        source?: 'ClawHub' | 'GitHub';
+        stars?: number;
+        language?: string;
       }>;
     }
   ): Promise<{ agentUserId: number; x402Endpoint: string }> {
