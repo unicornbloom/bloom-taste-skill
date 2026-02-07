@@ -176,12 +176,27 @@ echo "Your conversation here" | \
 **No tool recommendations**
 → Tool recommendations depend on API availability. Your identity card still works!
 
-## 🔐 Privacy
+## 🔐 Privacy & Data
 
-- ✅ **Conversation-only analysis** – No wallet analysis or transaction scraping
-- ✅ **No auth required** – Works out of the box
-- ✅ **Ephemeral processing** – Data not stored long-term
-- ✅ **Local-first** – Runs in your environment
+**What We Analyze (Locally)**:
+- ✅ Your conversation messages (last ~120 messages)
+- ✅ Topics and interests you discuss
+- ✅ No wallet transaction analysis
+- ✅ No personal identifiable information
+
+**What We Store**:
+- Your identity card (personality type, tagline, categories)
+- Agent wallet address (for future tipping features)
+- Dashboard URL for sharing
+
+**What We Don't Collect**:
+- ❌ Raw conversation text (only analyzed locally)
+- ❌ Wallet transaction history
+- ❌ Personal contact information
+- ❌ Browsing data or cookies
+
+**Data Usage**:
+Your identity card is stored on Bloom Protocol to power your shareable dashboard and enable future features like creator tipping and skill recommendations.
 
 ## 🔍 How to Find Skills You'll Love
 
