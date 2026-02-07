@@ -103,6 +103,15 @@ export class AgentWallet {
         this.walletAddress = ('0x' + hash.substring(0, 40)) as `0x${string}`;
         console.log(`🧪 Mock wallet for ${this.userId}: ${this.walletAddress}`);
 
+        // ⭐ Save mock wallet (so returning users see same wallet address)
+        const walletStorage = new WalletStorage();
+        await walletStorage.saveUserWallet(
+          this.userId,
+          this.walletAddress,
+          this.network
+          // No encryptedPrivateKey = marks as mock wallet
+        );
+
         return {
           address: this.walletAddress,
           network: this.network,

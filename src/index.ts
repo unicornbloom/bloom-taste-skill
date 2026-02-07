@@ -58,28 +58,36 @@ function formatResult(result: any): void {
 
   const modeEmoji = mode === 'manual' ? '📝' : '🤖';
 
-  console.log(`\n🎉 Bloom Identity Card Ready! ${modeEmoji}\n`);
+  // Top border
+  console.log('\n═══════════════════════════════════════════════════════');
+  console.log(`🎉 Your Bloom Identity Card is ready! ${modeEmoji}`);
+  console.log('═══════════════════════════════════════════════════════\n');
 
   // Dashboard URL first (most important)
   if (dashboardUrl) {
-    console.log(`🌐 View Your Card:`);
+    console.log('🔗 VIEW YOUR IDENTITY CARD (Click below):\n');
     console.log(`   ${dashboardUrl}\n`);
   }
 
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  // Personality (real data from analysis)
   console.log(`${getPersonalityEmoji(identityData.personalityType)} ${identityData.personalityType}`);
   console.log(`💬 "${identityData.customTagline}"\n`);
-  console.log(`${identityData.customDescription}\n`);
-  console.log(`Categories: ${identityData.mainCategories.join(', ')}`);
+  console.log(`📝 ${identityData.customDescription}\n`);
+
+  // Categories (real data)
+  console.log(`🏷️  Categories: ${identityData.mainCategories.join(', ')}`);
   if (identityData.subCategories && identityData.subCategories.length > 0) {
-    console.log(`Interests: ${identityData.subCategories.join(', ')}`);
+    console.log(`   Interests: ${identityData.subCategories.join(', ')}`);
   }
   console.log('');
 
-  // 2x2 Metrics
+  // 2x2 Metrics (real data if available)
   if (dimensions) {
     const isCultivator = identityData.personalityType === 'The Cultivator';
 
-    console.log(`📊 2x2 Metrics:`);
+    console.log('📊 2x2 Metrics:');
     console.log(`   Conviction ${dimensions.conviction} ← → Curiosity ${100 - dimensions.conviction}`);
     console.log(`   Intuition ${dimensions.intuition} ← → Analysis ${100 - dimensions.intuition}`);
 
@@ -90,17 +98,33 @@ function formatResult(result: any): void {
     console.log('');
   }
 
-  console.log(`🎯 Matching Skills (${recommendations.length}):`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  // Skills (real recommendations from ClawHub)
+  console.log(`🎯 Recommended OpenClaw Skills (${recommendations.length}):\n`);
   recommendations.slice(0, 5).forEach((skill: any, i: number) => {
     const creatorInfo = skill.creator ? ` • ${skill.creator}` : '';
-    console.log(`${i + 1}. ${skill.skillName} (${skill.matchScore}%)${creatorInfo}`);
+    console.log(`${i + 1}. ${skill.skillName} (${skill.matchScore}% match)${creatorInfo}`);
     console.log(`   ${skill.description}`);
+    console.log(`   💡 Tip creators with your Agent wallet!`);
     console.log(`   → ${skill.url}\n`);
   });
 
-  console.log(`🤖 Agent Wallet: ${agentWallet.network}`);
-  console.log(`⚠️  Features coming soon (tipping, payments, management)`);
-  console.log(`🔒 Do not deposit funds - withdrawals not ready\n`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  // Wallet info (real wallet data)
+  console.log('🤖 Agent On-Chain Identity\n');
+  console.log(`📍 Wallet: ${agentWallet.walletAddress || '[auto-generated]'}`);
+  if (agentWallet.x402Endpoint) {
+    console.log(`🔗 X402: ${agentWallet.x402Endpoint}`);
+  }
+  console.log(`⛓️  Network: ${agentWallet.network}`);
+  console.log('');
+  console.log('⚠️  Features coming soon (tipping, payments, management)');
+  console.log('🔒 Do not deposit funds - withdrawals not ready\n');
+
+  console.log('═══════════════════════════════════════════════════════\n');
+  console.log(`${mode === 'manual' ? '📝 Q&A' : '🤖 On-chain'} • @openclaw @coinbase @base 🦞\n`);
 }
 
 function getPersonalityEmoji(type: string): string {
