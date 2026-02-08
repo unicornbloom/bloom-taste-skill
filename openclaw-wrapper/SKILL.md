@@ -57,6 +57,13 @@ We analyze your last ~120 messages to understand:
 **No complex setup. No wallet signatures. No auth flows.**
 Just pure conversation intelligence.
 
+## ✅ New User Quick Start (ClawHub)
+
+1) **Chat a little first** (at least 3 messages) so Bloom has context.
+2) Type **`/bloom`**.
+3) You’ll get your **Identity Card + tool recommendations + dashboard link**.
+4) If you’re brand new, Bloom will ask **4 quick questions** and generate your card immediately.
+
 ## 🚀 Usage
 
 ```
