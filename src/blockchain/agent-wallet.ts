@@ -580,6 +580,74 @@ export class AgentWallet {
   }
 
   /**
+   * Save identity to Bloom WITHOUT wallet signature (fallback for wallet-free users)
+   * Uses POST /x402/agent-save endpoint
+   */
+  async saveIdentityWithBloom(
+    agentName: string,
+    identityData: {
+      personalityType: string;
+      tagline: string;
+      description: string;
+      mainCategories: string[];
+      subCategories: string[];
+      confidence: number;
+      mode: 'data' | 'manual';
+      dimensions?: {
+        conviction: number;
+        intuition: number;
+        contribution: number;
+      };
+      recommendations?: Array<{
+        skillId: string;
+        skillName: string;
+        description: string;
+        url: string;
+        categories: string[];
+        matchScore: number;
+        creator?: string;
+        creatorUserId?: number | string;
+        source?: 'ClawHub' | 'GitHub';
+        stars?: number;
+        language?: string;
+      }>;
+    }
+  ): Promise<{ agentUserId: number; dashboardUrl: string }> {
+    console.log('📝 Saving identity to Bloom (wallet-free)...');
+
+    const response = await fetch(`${process.env.BLOOM_API_URL || 'https://api.bloomprotocol.ai'}/x402/agent-save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        agentName,
+        agentType: 'skill-discovery',
+        identityData,
+        ...(this.walletAddress ? { walletAddress: this.walletAddress, network: this.network } : {}),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || 'Save failed');
+    }
+
+    console.log(`✅ Identity saved! Agent User ID: ${result.data.agentUserId}`);
+
+    return {
+      agentUserId: result.data.agentUserId,
+      dashboardUrl: result.data.dashboardUrl,
+    };
+  }
+
+  /**
    * Get wallet info for display
    */
   async getWalletInfo(): Promise<AgentWalletInfo> {

@@ -96,13 +96,14 @@ export class BloomIdentitySkillV2 {
 
     const walletInfo = await this.agentWallet.initialize();
 
-    // Register with Bloom Protocol
+    // Pre-register with Bloom Protocol (wallet address only, no identity data yet)
     try {
       const registration = await this.agentWallet.registerWithBloom('Bloom Skill Discovery Agent');
-      console.log(`✅ Agent registered with Bloom: userId ${registration.agentUserId}`);
+      console.log(`✅ Agent pre-registered with Bloom: userId ${registration.agentUserId}`);
       walletInfo.x402Endpoint = registration.x402Endpoint;
     } catch (error) {
-      console.warn('⚠️ Bloom registration failed, using fallback X402 endpoint');
+      // Not critical - identity will be saved in Step 5 via agent-save fallback
+      console.warn('⚠️ Bloom pre-registration skipped (identity will be saved later)');
     }
 
     return walletInfo;
@@ -281,34 +282,54 @@ export class BloomIdentitySkillV2 {
       const agentWallet = await this.initializeAgentWallet(userId);  // ⭐ Pass userId
       console.log(`✅ Agent wallet deployed on ${agentWallet.network}`);
 
-      // Step 5: Register agent and save identity card with Bloom (single atomic operation)
+      // Step 5: Register agent and save identity card with Bloom
+      // Try wallet-based registration first, fall back to wallet-free save
       let dashboardUrl: string | undefined;
       let agentUserId: number | undefined;
+
+      const identityPayload = {
+        personalityType: identityData!.personalityType,
+        tagline: identityData!.customTagline,
+        description: identityData!.customDescription,
+        mainCategories: identityData!.mainCategories,
+        subCategories: identityData!.subCategories,
+        confidence: dataQuality,
+        mode: (usedManualQA ? 'manual' : 'data') as 'data' | 'manual',
+        dimensions,
+        recommendations,
+      };
+
       try {
-        console.log('📝 Step 5: Registering agent with Bloom and saving identity card...');
+        console.log('📝 Step 5: Registering agent with Bloom...');
 
-        // Register agent with Bloom backend (includes identity data)
-        const registration = await this.agentWallet!.registerWithBloom('Bloom Skill Discovery Agent', {
-          personalityType: identityData!.personalityType,
-          tagline: identityData!.customTagline,
-          description: identityData!.customDescription,
-          mainCategories: identityData!.mainCategories,
-          subCategories: identityData!.subCategories,
-          confidence: dataQuality,
-          mode: usedManualQA ? 'manual' : 'data',
-          dimensions, // ⭐ Include 2x2 metrics
-          recommendations, // ⭐ Include skill recommendations (for future agent dashboard)
-        });
+        // Try wallet-based registration (with signature)
+        const registration = await this.agentWallet!.registerWithBloom(
+          'Bloom Skill Discovery Agent',
+          identityPayload,
+        );
         agentUserId = registration.agentUserId;
-        console.log(`✅ Agent registered with identity card! User ID: ${agentUserId}`);
+        console.log(`✅ Agent registered with wallet! User ID: ${agentUserId}`);
+      } catch (walletError) {
+        console.warn('⚠️  Wallet-based registration failed, trying wallet-free save...');
+        console.warn('   Error:', walletError instanceof Error ? walletError.message : walletError);
 
-        // Create permanent public dashboard URL (no auth required)
-        console.log('🔗 Creating public dashboard URL...');
+        try {
+          // Fallback: save without wallet signature
+          const saveResult = await this.agentWallet!.saveIdentityWithBloom(
+            'Bloom Skill Discovery Agent',
+            identityPayload,
+          );
+          agentUserId = saveResult.agentUserId;
+          console.log(`✅ Agent identity saved (wallet-free)! User ID: ${agentUserId}`);
+        } catch (saveError) {
+          console.error('❌ Both registration methods failed:', saveError);
+        }
+      }
+
+      if (agentUserId) {
         const baseUrl = process.env.DASHBOARD_URL || 'https://preflight.bloomprotocol.ai';
         dashboardUrl = `${baseUrl}/agents/${agentUserId}`;
         console.log(`✅ Public URL created: ${dashboardUrl}`);
-      } catch (error) {
-        console.warn('⚠️  Bloom registration failed (skipping dashboard link):', error);
       }
 
       // Step 6: Twitter share (DISABLED - image embedding issues)
