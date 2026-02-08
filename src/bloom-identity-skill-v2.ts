@@ -341,7 +341,8 @@ export class BloomIdentitySkillV2 {
 
       if (agentUserId) {
         const baseUrl = process.env.DASHBOARD_URL || 'https://preflight.bloomprotocol.ai';
-        dashboardUrl = `${baseUrl}/agents/${agentUserId}`;
+        const cacheBust = Date.now();
+        dashboardUrl = `${baseUrl}/agents/${agentUserId}?v=${cacheBust}`;
         console.log(`✅ Public URL created: ${dashboardUrl}`);
       }
 
