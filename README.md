@@ -78,7 +78,7 @@ Help your users discover tools they'll actually love — not just popular ones, 
 
 ## 📊 The 5 Personality Types
 
-Bloom Taste Finder maps users to one of 5 distinct taste archetypes based on their GitHub activity:
+Bloom Taste Finder maps users to one of 5 distinct taste archetypes based on their conversation patterns:
 
 | Type | Tagline | Characteristics |
 |------|---------|-----------------|
@@ -109,15 +109,15 @@ Your personalized **Bloom Taste Profile** includes:
 
 ## 🚀 How It Works
 
-### 1. GitHub Activity Analysis
-Bloom analyzes your GitHub profile to understand:
-- **What you star and contribute to** – Repositories and projects you support
-- **Languages and frameworks** – Technologies you work with
-- **Collaboration patterns** – How you engage with the community
-- **Trending topics** – Emerging areas you follow
+### 1. Conversation Analysis
+Bloom analyzes your conversation history to understand:
+- **What excites you** – Topics you discuss with passion
+- **Your interests** – AI, crypto, productivity, wellness, education, lifestyle
+- **How you engage** – Deep exploration vs. quick experiments
+- **Your preferences** – Tools and projects you mention or recommend
 
 ### 2. Taste Profile Generation
-Using multiple dimensions (Conviction × Intuition), we map you to one of 5 personality types and identify your main interest categories:
+Using multiple dimensions (Conviction × Intuition × Contribution), we map you to one of 5 personality types and identify your main interest categories:
 - **AI Tools** – Agent frameworks, AI development tools
 - **Productivity** – Workflow automation, productivity apps
 - **Wellness** – Health tech, mindfulness tools
@@ -144,8 +144,8 @@ You get:
 - An on-chain agent wallet (Base network)
 - A JWT-signed token for verification
 
-**Privacy-first. GitHub-based. No transaction scraping.**
-Pure taste intelligence.
+**Privacy-first. Conversation-based. No wallet signatures required.**
+Pure taste intelligence from how you communicate.
 
 ---
 
@@ -216,11 +216,11 @@ cat conversation.txt | \
 
 ## 🔐 Privacy
 
-- ✅ **GitHub-based analysis** – Uses public GitHub activity only
-- ✅ **No transaction scraping** – No wallet signatures required
-- ✅ **No Twitter auth required** – Optional enhancement, not mandatory
+- ✅ **Conversation-based analysis** – Analyzes your chat history only
+- ✅ **No wallet signatures** – No transaction scraping required
+- ✅ **No social auth required** – Twitter/Farcaster optional, not mandatory
 - ✅ **Ephemeral processing** – Data not stored long-term
-- ✅ **Local-first** – Runs in your environment
+- ✅ **Local-first** – Runs in your OpenClaw environment
 - ✅ **Open source** – Audit the taste algorithm yourself
 
 ---
@@ -280,14 +280,14 @@ npx tsx scripts/test-full-flow.ts
 
 ## 🐛 Troubleshooting
 
-**"GitHub profile not found"**
-→ Make sure you've connected your GitHub account and have public activity
+**"Insufficient conversation data"**
+→ Need at least 3 messages. Keep chatting about what you're interested in!
 
 **"Command not found"**
 → Verify `bloom-taste-skill` is in `~/.openclaw/workspace/` and run `npm install`
 
 **No recommendations**
-→ Recommendations depend on GitHub activity and available data sources. Try again later!
+→ Recommendations depend on data source availability. Your taste profile still works!
 
 **Wallet creation fails**
 → Check your CDP credentials in `.env`. See [SETUP_CDP_CREDENTIALS.md](SETUP_CDP_CREDENTIALS.md).
