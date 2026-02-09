@@ -16,7 +16,7 @@
 Unlike traditional recommendation systems that rely on popularity, Bloom Taste Finder analyzes nuanced patterns in user behavior to understand their unique "taste" — then finds and matches them with tools they'll genuinely love.
 
 **Key Features:**
-- 🎴 **8 Personality Types** – Discover your taste archetype (The Trailblazer, The Curator, etc.)
+- 🎴 **5 Personality Types** – Discover your taste archetype (The Visionary, The Explorer, etc.)
 - 🎯 **Taste-Based Recommendations** – Get personalized tool suggestions from 3 sources:
   - ClawHub Skills (200+ community-created AI agent skills)
   - Claude Code (Official Anthropic + 6 community repositories)
@@ -76,20 +76,17 @@ Help your users discover tools they'll actually love — not just popular ones, 
 
 ---
 
-## 📊 The 8 Personality Types
+## 📊 The 5 Personality Types
 
-Bloom Taste Finder maps users to one of 8 distinct taste archetypes:
+Bloom Taste Finder maps users to one of 5 distinct taste archetypes based on their GitHub activity:
 
 | Type | Tagline | Characteristics |
 |------|---------|-----------------|
-| 🚀 **The Trailblazer** | First to back new tech | Early adopter, high conviction, intuitive |
-| 🔍 **The Explorer** | Discovers new frontiers | Wide experimentation, curious, open-minded |
-| 🌱 **The Cultivator** | Builds lasting communities | Community-focused, nurturing, patient |
-| ⚡ **The Optimizer** | Refines what works | Evidence-driven, analytical, efficient |
-| 💡 **The Innovator** | Pushes boundaries | Creative, experimental, boundary-pushing |
-| 🎯 **The Specialist** | Deep dives into niches | Focused expertise, depth over breadth |
-| 🌐 **The Connector** | Bridges communities | Network builder, collaborative, social |
-| 📚 **The Curator** | Filters signal from noise | Quality-focused, discerning, selective |
+| 💜 **The Visionary** | First to back what's next | High conviction + High intuition - Backs bold ideas early |
+| 🔵 **The Explorer** | Discovers new frontiers | Low conviction + High intuition - Experiments widely |
+| 💚 **The Cultivator** | Builds lasting communities | Low conviction + Low intuition - Nurtures ecosystems |
+| 🟡 **The Optimizer** | Refines what works | High conviction + Low intuition - Doubles down on winners |
+| 🔴 **The Innovator** | Pushes boundaries | Balanced dimensions - Combines conviction + discovery |
 
 ---
 
@@ -120,7 +117,7 @@ Bloom analyzes your GitHub profile to understand:
 - **Trending topics** – Emerging areas you follow
 
 ### 2. Taste Profile Generation
-Using multiple dimensions (Conviction × Intuition × Contribution), we map you to one of 8 personality types and identify your main interest categories:
+Using multiple dimensions (Conviction × Intuition), we map you to one of 5 personality types and identify your main interest categories:
 - **AI Tools** – Agent frameworks, AI development tools
 - **Productivity** – Workflow automation, productivity apps
 - **Wellness** – Health tech, mindfulness tools
