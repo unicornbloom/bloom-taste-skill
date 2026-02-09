@@ -1,8 +1,8 @@
-# 🎨 Bloom Taste Finder
+# 🌸 Bloom Taste Finder (Bloom Identity Skill)
 
-**AI skill that analyzes user preferences and recommends tools based on their unique taste.**
+**AI skill that analyzes your conversations to uncover builder taste and recommend the right tools.**
 
-[![Version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/unicornbloom/bloom-taste-skill)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/unicornbloom/bloom-identity-skill)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-Compatible-green)](https://openclaw.ai)
 [![ClawHub](https://img.shields.io/badge/ClawHub-Published-purple)](https://clawhub.ai/skills/bloom)
 [![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
@@ -11,7 +11,7 @@
 
 ## 🎯 What Is This?
 
-**Bloom Taste Finder** helps AI agents understand user taste and recommend the right tools, projects, and skills based on unique preferences and personality.
+**Bloom Taste Finder** reveals your builder taste and recommends tools, projects, and skills based on your unique preferences and personality.
 
 Unlike traditional recommendation systems that rely on popularity, Bloom Taste Finder analyzes nuanced patterns in user behavior to understand their unique "taste" — then finds and matches them with tools they'll genuinely love.
 
@@ -35,7 +35,7 @@ Unlike traditional recommendation systems that rely on popularity, Bloom Taste F
 /bloom
 ```
 
-That's it. Get your supporter identity in ~3 seconds.
+That's it. Get your taste profile in ~3 seconds.
 
 ### For Developers
 

@@ -1,6 +1,6 @@
 ---
 name: bloom
-description: Discover your supporter personality and find AI tools you'll love. Get personalized recommendations, connect with your first 100 supporters, and search for skills that match how you work. For indie devs, vibe coders, and AI builders.
+description: Bloom Taste Finder — discover your builder taste and get a personalized tool stack + early supporters. For indie devs, vibe coders, and AI builders.
 user-invocable: true
 command-dispatch: tool
 metadata: {"requires": {"bins": ["node", "npx"]}}
@@ -10,9 +10,9 @@ permissions:
   - crypto:wallet       # Creates agent wallet (optional feature)
 ---
 
-# Bloom Supporter Identity
+# Bloom Taste Finder
 
-**Discover your supporter personality—straight from your conversations.**
+**Discover your builder taste—straight from your conversations.**
 
 ## ⚠️ Permissions & Capabilities
 
@@ -79,10 +79,10 @@ That's it. Or use natural language:
 
 Works with as few as 3 messages—but richer history = deeper insights.
 
-## 🌟 Why Bloom Supporter Identity?
+## 🌟 Why Bloom Taste Finder?
 
 **For Indie Devs & AI Builders:**
-Building something new? Show you were early—not through complex analytics, but through *conviction*. Your supporter card helps you **find your first 100 supporters** who share your vision.
+Building something new? Bloom Taste Finder helps you **find your first 100 supporters** by matching you with tools and people who fit your vibe.
 
 **For Vibe Coders:**
 Stop guessing what tools to try next. Get personalized recommendations based on how you actually work, not generic listicles. **Discover skills you'll actually use** instead of scrolling endless lists.
