@@ -493,8 +493,9 @@ export class EnhancedDataCollector {
     // Extract preferences
     const preferences = this.extractPreferencesFromText(userMessages.join(' '));
 
-    // Get recent conversation snippets
-    const recentMessages = messages.slice(-10).map(m => m.slice(0, 200));
+    // Get conversation snippets — include all messages for short conversations
+    const historyMessages = messages.length <= 30 ? messages : messages.slice(-20);
+    const recentMessages = historyMessages.map(m => m.slice(0, 200));
 
     return {
       topics,
@@ -508,31 +509,40 @@ export class EnhancedDataCollector {
   /**
    * Extract topics from text
    */
+  /**
+   * Extract topics from text using frequency-weighted scoring.
+   * A topic needs >= 2 distinct keyword hits to qualify,
+   * preventing a single casual mention from becoming a "main topic".
+   */
   private extractTopicsFromText(text: string): string[] {
-    const topics: string[] = [];
     const lowerText = text.toLowerCase();
 
     const topicPatterns: Record<string, string[]> = {
-      'AI Tools': ['ai', 'gpt', 'llm', 'chatbot', 'machine learning', 'neural network'],
-      'Crypto': ['crypto', 'blockchain', 'defi', 'web3', 'token', 'nft', 'dao'],
-      'Productivity': ['productivity', 'workflow', 'automation', 'task', 'efficiency'],
-      'Wellness': ['wellness', 'health', 'fitness', 'meditation', 'mindfulness'],
-      'Education': ['education', 'learning', 'course', 'tutorial', 'teach'],
-      'Development': ['development', 'coding', 'programming', 'software', 'engineering'],
-      'Marketing': ['marketing', 'growth', 'seo', 'content', 'advertising'],
-      'Finance': ['finance', 'investing', 'trading', 'money', 'wealth'],
-      'Design': ['design', 'ui', 'ux', 'creative', 'art'],
-      'Social': ['social', 'community', 'networking', 'collaboration'],
+      'AI Tools': ['ai', 'gpt', 'llm', 'chatbot', 'machine learning', 'neural', 'openai', 'prompt', 'model', 'inference', 'agent'],
+      'Crypto': ['crypto', 'blockchain', 'defi', 'web3', 'token', 'nft', 'dao', 'onchain', 'smart contract', 'protocol', 'wallet'],
+      'Productivity': ['productivity', 'workflow', 'automation', 'task', 'efficiency', 'optimize', 'systematic', 'time management'],
+      'Wellness': ['wellness', 'health', 'fitness', 'meditation', 'mindfulness', 'yoga', 'sleep', 'mental health', 'self-care'],
+      'Education': ['education', 'learning', 'course', 'tutorial', 'teach', 'mentor', 'study', 'workshop', 'knowledge'],
+      'Development': ['development', 'coding', 'programming', 'software', 'engineering', 'code', 'developer', 'api', 'architecture', 'debugging'],
+      'Marketing': ['marketing', 'growth', 'seo', 'content strategy', 'advertising', 'brand', 'conversion', 'campaign'],
+      'Finance': ['finance', 'investing', 'trading', 'money', 'wealth', 'portfolio', 'stock', 'market'],
+      'Design': ['design', 'ui', 'ux', 'figma', 'creative', 'visual', 'prototype'],
+      'Social': ['social', 'community', 'networking', 'collaboration', 'forum', 'discord'],
     };
 
+    const topicScores: Array<{ topic: string; score: number }> = [];
+
     for (const [topic, keywords] of Object.entries(topicPatterns)) {
-      const matches = keywords.filter(kw => lowerText.includes(kw)).length;
-      if (matches >= 2) {
-        topics.push(topic);
+      const distinctMatches = keywords.filter(kw => lowerText.includes(kw)).length;
+      if (distinctMatches >= 2) {
+        topicScores.push({ topic, score: distinctMatches });
       }
     }
 
-    return topics;
+    // Sort by score descending
+    return topicScores
+      .sort((a, b) => b.score - a.score)
+      .map(t => t.topic);
   }
 
   /**

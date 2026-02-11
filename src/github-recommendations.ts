@@ -14,6 +14,7 @@ export interface GitHubRecommendation {
   url: string;
   categories: string[];
   matchScore: number;
+  reason?: string;
   creator?: string;
   creatorUserId?: number | string;
   source: 'GitHub';
@@ -131,7 +132,7 @@ export class GitHubRecommendations {
     for (const topic of topTopics) {
       try {
         // Build search query: topic + stars + recent activity
-        const query = `topic:${topic} stars:>100 pushed:>2023-01-01`;
+        const query = `topic:${topic} stars:>50 pushed:>2025-01-01`;
         const url = `${this.baseUrl}/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=${Math.ceil(limit / topTopics.length)}`;
 
         const headers: Record<string, string> = {
@@ -209,6 +210,16 @@ export class GitHubRecommendations {
 
       // Only include repos with decent match score
       if (matchScore >= 30) {
+        // Generate reason from matched topics
+        const matchedTopicNames = repo.topics.filter(t => userTopics.includes(t));
+        const starsDisplay = repo.stargazers_count >= 1000
+          ? `${(repo.stargazers_count / 1000).toFixed(1)}k`
+          : `${repo.stargazers_count}`;
+        const humanizeTopic = (t: string) => t.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const reason = matchedTopicNames.length > 0
+          ? `Because you're into ${humanizeTopic(matchedTopicNames[0])} — ${starsDisplay} stars on GitHub`
+          : `Popular in your area of interest — ${starsDisplay} stars`;
+
         recommendations.push({
           skillId: repo.full_name.replace('/', '-'),
           skillName: repo.name,
@@ -216,6 +227,7 @@ export class GitHubRecommendations {
           url: repo.html_url,
           categories: repo.topics.length > 0 ? repo.topics : ['General'],
           matchScore,
+          reason,
           creator: repo.owner.login,
           source: 'GitHub',
           stars: repo.stargazers_count,

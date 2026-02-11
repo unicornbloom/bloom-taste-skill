@@ -51,15 +51,25 @@ export interface PersonalityAnalysis {
 
 /**
  * Category keywords for tagline generation
+ * Expanded with more specific terms per category.
+ * detectCategories() uses frequency-weighted scoring — a single mention
+ * of a common word won't label someone into a category.
  */
-const CATEGORY_KEYWORDS = {
-  'AI Tools': ['ai', 'gpt', 'llm', 'machine learning', 'neural', 'model'],
-  'Productivity': ['productivity', 'workflow', 'automation', 'efficiency', 'task'],
-  'Wellness': ['wellness', 'health', 'fitness', 'meditation', 'mental'],
-  'Education': ['education', 'learning', 'course', 'teach', 'knowledge'],
-  'Crypto': ['crypto', 'defi', 'web3', 'blockchain', 'token', 'dao'],
-  'Lifestyle': ['lifestyle', 'design', 'art', 'fashion', 'travel'],
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  'AI Tools': ['ai', 'gpt', 'llm', 'machine learning', 'neural', 'model', 'chatbot', 'openai', 'anthropic', 'claude', 'copilot', 'prompt', 'inference', 'transformer', 'agent'],
+  'Productivity': ['productivity', 'workflow', 'automation', 'efficiency', 'task management', 'notion', 'calendar', 'time tracking', 'optimize', 'systematic'],
+  'Wellness': ['wellness', 'health', 'fitness', 'meditation', 'mindfulness', 'mental health', 'yoga', 'sleep', 'nutrition', 'self-care', 'wellbeing'],
+  'Education': ['education', 'learning', 'course', 'teach', 'knowledge', 'tutorial', 'study', 'mentor', 'curriculum', 'workshop', 'training'],
+  'Crypto': ['crypto', 'defi', 'web3', 'blockchain', 'token', 'dao', 'nft', 'onchain', 'smart contract', 'wallet', 'protocol', 'ethereum', 'solana', 'base'],
+  'Lifestyle': ['lifestyle', 'fashion', 'travel', 'personal brand', 'food', 'photography'],
+  'Design': ['design', 'ui', 'ux', 'figma', 'creative', 'visual', 'typography', 'layout', 'prototype'],
+  'Development': ['development', 'coding', 'programming', 'software', 'engineering', 'code', 'developer', 'api', 'framework', 'architecture', 'debugging', 'typescript', 'python', 'rust'],
+  'Marketing': ['marketing', 'growth', 'seo', 'content strategy', 'advertising', 'brand', 'conversion', 'funnel', 'campaign', 'audience'],
+  'Finance': ['finance', 'investing', 'trading', 'portfolio', 'wealth', 'stock', 'market', 'budget', 'revenue'],
 };
+
+// Minimum keyword frequency score to qualify as a detected category
+const MIN_CATEGORY_SCORE = 3;
 
 /**
  * Tagline templates by personality type
@@ -131,16 +141,76 @@ export class PersonalityAnalyzer {
 
   /**
    * Calculate Conviction (0-100)
-   * High = Few deep commitments, long-term holding, repeated interactions
-   * Low = Diverse portfolio, short-term, always exploring
+   * High = Few deep commitments, focused topics, repeated themes
+   * Low = Diverse interests, many topics, always exploring
    */
   private calculateConviction(userData: UserData): number {
     let score = 50; // Start at midpoint
 
+    // Factor 0: Conversation topic focus (primary signal for conversation-only)
+    if (userData.conversationMemory) {
+      const topicCount = userData.conversationMemory.topics.length;
+
+      // Fewer topics = more focused = higher conviction
+      if (topicCount <= 1) score += 15;
+      else if (topicCount <= 2) score += 5;
+      else if (topicCount <= 3) score += 0;
+      else if (topicCount >= 6) score -= 10;
+      else if (topicCount >= 8) score -= 20;
+
+      // Topic dominance: use all available text (history + topics + interests)
+      const history = this.extractAllText(userData).toLowerCase();
+      const topicMentions = userData.conversationMemory.topics.map(topic => {
+        // Count how many times each topic's keywords appear in history
+        const topicWord = topic.toLowerCase().split(' ')[0];
+        const regex = new RegExp(topicWord, 'g');
+        return { topic, count: (history.match(regex) || []).length };
+      });
+      topicMentions.sort((a, b) => b.count - a.count);
+
+      if (topicMentions.length >= 2) {
+        const topCount = topicMentions[0].count;
+        const secondCount = topicMentions[1].count;
+        // Dominant topic = focused person = high conviction
+        if (topCount >= 3 * secondCount && topCount >= 3) score += 20;
+        else if (topCount >= 2 * secondCount && topCount >= 2) score += 10;
+        // Even spread across many topics = explorer = low conviction
+        else if (topCount <= secondCount + 1) score -= 10;
+      }
+
+      // Many topics + even spread = strong explorer signal
+      if (topicCount >= 4 && topicMentions.length >= 2) {
+        const topCount = topicMentions[0].count;
+        const bottomCount = topicMentions[topicMentions.length - 1].count;
+        // If top and bottom topics have similar mentions, very even = explorer
+        if (topCount <= bottomCount * 2) score -= 10;
+      }
+
+      // Explorer language detection: curiosity/exploration words lower conviction
+      // These signal someone who explores broadly rather than commits deeply
+      const explorerKeywords = [
+        'curious', 'explore', 'exploring', 'explorer', 'discovery', 'discover',
+        'experiment', 'experimenting', 'variety', 'diverse', 'try new',
+        'always looking', 'different', 'comparing', 'new things', 'so many things',
+        'rabbit hole', 'stumble upon',
+      ];
+      const convictionKeywords = [
+        'committed', 'dedicated', 'focused', 'deep dive', 'specialize',
+        'expert', 'obsessed', 'passionate about', 'all in', 'doubled down',
+      ];
+      const explorerHits = explorerKeywords.filter(kw => history.includes(kw)).length;
+      const convictionHits = convictionKeywords.filter(kw => history.includes(kw)).length;
+      const explorerNet = explorerHits - convictionHits;
+      if (explorerNet >= 4) score -= 25;
+      else if (explorerNet >= 2) score -= 15;
+      else if (explorerNet >= 1) score -= 5;
+      else if (explorerNet <= -2) score += 10;
+    }
+
     if (userData.wallet) {
       const { transactions = [], contracts = [], tokens = [] } = userData.wallet;
 
-      // Factor 1: Portfolio concentration (fewer contracts = higher conviction)
+      // Portfolio concentration (fewer contracts = higher conviction)
       const uniqueContracts = new Set(contracts).size;
       if (uniqueContracts > 0) {
         if (uniqueContracts <= 5) score += 20;
@@ -148,7 +218,7 @@ export class PersonalityAnalyzer {
         else if (uniqueContracts > 30) score -= 20;
       }
 
-      // Factor 2: Repeat interactions (multiple txs to same contract = conviction)
+      // Repeat interactions
       const contractCounts = contracts.reduce((acc, addr) => {
         acc[addr] = (acc[addr] || 0) + 1;
         return acc;
@@ -158,13 +228,13 @@ export class PersonalityAnalyzer {
       else if (avgInteractionsPerContract > 2) score += 5;
       else if (avgInteractionsPerContract < 1.5) score -= 10;
 
-      // Factor 3: Token holding (long-term holding = conviction)
+      // Token holding
       const uniqueTokens = new Set(tokens.map((t: any) => t.symbol)).size;
-      if (uniqueTokens > 20) score -= 15; // Too diversified
-      else if (uniqueTokens < 5) score += 10; // Focused
+      if (uniqueTokens > 20) score -= 15;
+      else if (uniqueTokens < 5) score += 10;
     }
 
-    // Social signals: Follow few but engage deeply
+    // Social signals
     if (userData.twitter) {
       const followingCount = userData.twitter.following.length;
       if (followingCount < 100) score += 5;
@@ -281,8 +351,8 @@ export class PersonalityAnalyzer {
   private classifyPersonality(dimensions: DimensionScores): PersonalityType {
     const { conviction, intuition, contribution } = dimensions;
 
-    // Override: If contribution > 65, user is The Cultivator
-    if (contribution > 65) {
+    // Override: If contribution > 55, user is The Cultivator
+    if (contribution > 55) {
       return PersonalityType.THE_CULTIVATOR;
     }
 
@@ -305,6 +375,10 @@ export class PersonalityAnalyzer {
 
   /**
    * Detect top categories from user data
+   *
+   * Uses frequency-weighted scoring: counts total keyword hits per category.
+   * A category must reach MIN_CATEGORY_SCORE to qualify — a single passing
+   * mention of "blockchain" won't label someone as a Crypto person.
    */
   private detectCategories(userData: UserData): string[] {
     const allText = this.extractAllText(userData).toLowerCase();
@@ -313,7 +387,9 @@ export class PersonalityAnalyzer {
     for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
       let score = 0;
       for (const keyword of keywords) {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        // Use word boundary for short keywords to avoid false matches
+        const pattern = keyword.length <= 3 ? `\\b${keyword}\\b` : keyword;
+        const regex = new RegExp(pattern, 'gi');
         const matches = allText.match(regex);
         if (matches) {
           score += matches.length;
@@ -322,11 +398,21 @@ export class PersonalityAnalyzer {
       categoryScores[category] = score;
     }
 
-    // Sort by score descending
-    return Object.entries(categoryScores)
+    // Filter by minimum score, then sort by score descending
+    const qualified = Object.entries(categoryScores)
+      .filter(([, score]) => score >= MIN_CATEGORY_SCORE)
       .sort(([, a], [, b]) => b - a)
-      .map(([category]) => category)
-      .slice(0, 3); // Top 3 categories
+      .map(([category]) => category);
+
+    // Always return at least 1 category (fallback to highest scoring)
+    if (qualified.length === 0) {
+      const fallback = Object.entries(categoryScores)
+        .sort(([, a], [, b]) => b - a)
+        .map(([category]) => category);
+      return fallback.slice(0, 1);
+    }
+
+    return qualified.slice(0, 3);
   }
 
   /**

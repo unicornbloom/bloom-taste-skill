@@ -39,9 +39,10 @@ export interface SkillRecommendation {
   url: string;
   categories: string[];
   matchScore: number;
+  reason?: string;
   creator?: string;
   creatorUserId?: number | string;
-  source?: 'ClawHub' | 'GitHub';
+  source?: 'ClawHub' | 'ClaudeCode' | 'GitHub';
   stars?: number;
   language?: string;
 }
@@ -481,16 +482,17 @@ export class BloomIdentitySkillV2 {
         this.getGitHubRecommendations(identity),
       ]);
 
-      // Merge results (keep all for categorized display)
+      // Merge and sort by score
       const allRecommendations = [...clawHubSkills, ...claudeCodeSkills, ...githubRepos];
-
-      // Sort by match score within each source
       allRecommendations.sort((a, b) => b.matchScore - a.matchScore);
 
-      console.log(`✅ Found ${clawHubSkills.length} ClawHub + ${claudeCodeSkills.length} Claude Code + ${githubRepos.length} GitHub recommendations`);
-      console.log(`   Returning ${allRecommendations.length} total (categorized by source)`);
+      // Apply diversity constraint: max 2 per primary category, at least 3 different categories
+      const diverseRecommendations = this.applyDiversityConstraint(allRecommendations, 7);
 
-      return allRecommendations;
+      console.log(`✅ Found ${clawHubSkills.length} ClawHub + ${claudeCodeSkills.length} Claude Code + ${githubRepos.length} GitHub recommendations`);
+      console.log(`   Returning ${diverseRecommendations.length} diverse picks from ${allRecommendations.length} total`);
+
+      return diverseRecommendations;
 
     } catch (error) {
       console.error('❌ Recommendation search failed:', error);
@@ -517,16 +519,19 @@ export class BloomIdentitySkillV2 {
         // Boost score based on personality match
         const personalityKeywords = this.getPersonalityKeywords(identity.personalityType);
         const descLower = skill.description.toLowerCase();
-        const keywordMatches = personalityKeywords.filter(k => descLower.includes(k)).length;
-        matchScore += keywordMatches * 5;
+        const matchedKeywords = personalityKeywords.filter(k => descLower.includes(k));
+        matchScore += matchedKeywords.length * 5;
 
         // Category match boost
-        const categoryMatch = skill.categories?.some(c =>
+        const matchedCategories = skill.categories?.filter(c =>
           identity.mainCategories.includes(c) || identity.subCategories.includes(c.toLowerCase())
-        );
-        if (categoryMatch) {
+        ) || [];
+        if (matchedCategories.length > 0) {
           matchScore += 10;
         }
+
+        // Generate recommendation reason
+        const reason = this.generateReason(matchedCategories, matchedKeywords, identity);
 
         return {
           skillId: skill.slug,
@@ -535,6 +540,7 @@ export class BloomIdentitySkillV2 {
           url: skill.url,
           categories: skill.categories || ['General'],
           matchScore: Math.min(matchScore, 100),
+          reason,
           creator: skill.creator,
           creatorUserId: skill.creatorUserId,
           source: 'ClawHub' as const,
@@ -558,15 +564,29 @@ export class BloomIdentitySkillV2 {
         limit: 10,
       });
 
-      // Convert to our SkillRecommendation format
-      return claudeCodeSkills.map(skill => ({
-        skillName: skill.skillName,
-        matchScore: 85, // High score for official tools
-        description: skill.description,
-        url: skill.url,
-        creator: skill.creator,
-        source: 'ClaudeCode' as const,
-      }));
+      // Convert to our SkillRecommendation format with reasons
+      return claudeCodeSkills.map(skill => {
+        const searchText = `${skill.skillName} ${skill.description} ${skill.category || ''}`.toLowerCase();
+        const matchedCategory = [...identity.mainCategories, ...identity.subCategories]
+          .find(c => searchText.includes(c.toLowerCase()));
+
+        const typeName = identity.personalityType.replace(/^The /, '');
+        const reason = matchedCategory
+          ? `Because you're into ${matchedCategory}`
+          : `Fits your ${typeName} profile`;
+
+        return {
+          skillId: skill.url,
+          skillName: skill.skillName,
+          matchScore: 85,
+          reason,
+          description: skill.description,
+          url: skill.url,
+          categories: skill.category ? [skill.category] : ['General'],
+          creator: skill.creator,
+          source: 'ClaudeCode' as const,
+        };
+      });
     } catch (error) {
       console.error('⚠️  Claude Code search failed:', error);
       return [];
@@ -583,6 +603,85 @@ export class BloomIdentitySkillV2 {
       console.error('⚠️  GitHub search failed:', error);
       return [];
     }
+  }
+
+  /**
+   * Apply diversity constraint to recommendations
+   * - Max 2 skills per primary category
+   * - At least 3 different categories in top N
+   * - Fill remaining slots with highest-scoring from any category
+   */
+  private applyDiversityConstraint(
+    recommendations: SkillRecommendation[],
+    maxResults: number
+  ): SkillRecommendation[] {
+    const MAX_PER_CATEGORY = 2;
+    const MIN_CATEGORIES = 3;
+
+    const selected: SkillRecommendation[] = [];
+    const categoryCounts: Record<string, number> = {};
+
+    const getPrimaryCategory = (skill: SkillRecommendation): string => {
+      return skill.categories?.[0] || skill.source || 'General';
+    };
+
+    // Pass 1: Pick top skill from each unique category (ensure diversity)
+    const seenCategories = new Set<string>();
+    for (const skill of recommendations) {
+      const cat = getPrimaryCategory(skill);
+      if (!seenCategories.has(cat) && selected.length < maxResults) {
+        selected.push(skill);
+        seenCategories.add(cat);
+        categoryCounts[cat] = 1;
+        if (seenCategories.size >= MIN_CATEGORIES && selected.length >= MIN_CATEGORIES) break;
+      }
+    }
+
+    // Pass 2: Fill remaining slots by score, respecting max per category
+    for (const skill of recommendations) {
+      if (selected.length >= maxResults) break;
+      if (selected.includes(skill)) continue;
+
+      const cat = getPrimaryCategory(skill);
+      const count = categoryCounts[cat] || 0;
+      if (count < MAX_PER_CATEGORY) {
+        selected.push(skill);
+        categoryCounts[cat] = count + 1;
+      }
+    }
+
+    // Pass 3: If still under maxResults, fill with best remaining (ignore cap)
+    if (selected.length < maxResults) {
+      for (const skill of recommendations) {
+        if (selected.length >= maxResults) break;
+        if (!selected.includes(skill)) {
+          selected.push(skill);
+        }
+      }
+    }
+
+    return selected;
+  }
+
+  /**
+   * Generate a personalized recommendation reason
+   */
+  private generateReason(
+    matchedCategories: string[],
+    matchedKeywords: string[],
+    identity: IdentityData
+  ): string {
+    const typeName = identity.personalityType.replace(/^The /, '');
+    if (matchedCategories.length > 0 && matchedKeywords.length > 0) {
+      return `Because you're into ${matchedCategories[0]} — fits your ${typeName} style`;
+    }
+    if (matchedCategories.length > 0) {
+      return `Because you're into ${matchedCategories[0]}`;
+    }
+    if (matchedKeywords.length > 0) {
+      return `Fits your ${typeName} style`;
+    }
+    return `Related to your interest in ${identity.mainCategories[0] || identity.subCategories[0] || 'building'}`;
   }
 
   /**
@@ -702,6 +801,7 @@ ${metricsDisplay}━━━━━━━━━━━━━━━━━━━━━
 
 ${(() => {
   const clawHubSkills = recommendations.filter((r: any) => r.source === 'ClawHub' || !r.source);
+  const claudeCodeSkills = recommendations.filter((r: any) => r.source === 'ClaudeCode');
   const githubRepos = recommendations.filter((r: any) => r.source === 'GitHub');
 
   let output = '';
@@ -711,8 +811,22 @@ ${(() => {
     output += '🦞 **ClawHub Skills**\n\n';
     output += clawHubSkills.slice(0, 3).map((s: any, i: number) => {
       const creatorInfo = s.creator ? ` • by @${s.creator}` : '';
+      const reasonLine = s.reason ? `\n   💡 ${s.reason}` : '';
       return `${i + 1}. **${s.skillName}**${creatorInfo}
-   ${s.description}
+   ${s.description}${reasonLine}
+   → ${s.url}`;
+    }).join('\n\n');
+  }
+
+  // Claude Code Skills (top 2)
+  if (claudeCodeSkills.length > 0) {
+    if (output) output += '\n\n';
+    output += '🤖 **Claude Code Skills**\n\n';
+    output += claudeCodeSkills.slice(0, 2).map((s: any, i: number) => {
+      const creatorInfo = s.creator ? ` • by ${s.creator}` : '';
+      const reasonLine = s.reason ? `\n   💡 ${s.reason}` : '';
+      return `${i + 1}. **${s.skillName}**${creatorInfo}
+   ${s.description}${reasonLine}
    → ${s.url}`;
     }).join('\n\n');
   }
@@ -724,8 +838,9 @@ ${(() => {
     output += githubRepos.slice(0, 3).map((s: any, i: number) => {
       const starsInfo = s.stars ? ` ⭐ ${s.stars >= 1000 ? `${(s.stars / 1000).toFixed(1)}k` : s.stars}` : '';
       const langInfo = s.language ? ` [${s.language}]` : '';
+      const reasonLine = s.reason ? `\n   💡 ${s.reason}` : '';
       return `${i + 1}. **${s.skillName}**${starsInfo}${langInfo}
-   ${s.description}
+   ${s.description}${reasonLine}
    → ${s.url}`;
     }).join('\n\n');
   }

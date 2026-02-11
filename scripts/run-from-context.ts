@@ -143,13 +143,15 @@ function formatResult(result: any): void {
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-  // Skills (real recommendations from ClawHub)
-  console.log(`🎯 Recommended OpenClaw Skills (${recommendations.length}):\n`);
-  recommendations.slice(0, 5).forEach((skill: any, i: number) => {
+  // Skills (diverse recommendations from all sources)
+  console.log(`🎯 Recommended for You (${recommendations.length}):\n`);
+  recommendations.slice(0, 7).forEach((skill: any, i: number) => {
     const creatorInfo = skill.creator ? ` • ${skill.creator}` : '';
-    console.log(`${i + 1}. ${skill.skillName} (${skill.matchScore}% match)${creatorInfo}`);
+    console.log(`${i + 1}. ${skill.skillName}${creatorInfo}`);
     console.log(`   ${skill.description}`);
-    console.log(`   💡 Tip creators with your Agent wallet!`);
+    if (skill.reason) {
+      console.log(`   💡 ${skill.reason}`);
+    }
     console.log(`   → ${skill.url}\n`);
   });
 
