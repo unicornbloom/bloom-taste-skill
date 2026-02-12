@@ -64,12 +64,12 @@ function formatResult(result: any): void {
   console.log(`Categories: ${identityData.mainCategories.join(' • ')}`);
   console.log('');
 
-  if (recommendations?.length > 0) {
-    console.log(`🔍 ${recommendations.length} tools & skills matched to your taste`);
-  }
-
-  if (dashboardUrl) {
-    console.log(`→ See your recommendations: ${dashboardUrl}`);
+  if (recommendations?.length > 0 && dashboardUrl) {
+    console.log(`🎴 Your Taste Card is ready — ${recommendations.length} tools & skills matched to your taste`);
+    console.log(`→ See your card & recommendations: ${dashboardUrl}`);
+  } else if (dashboardUrl) {
+    console.log(`🎴 Your Taste Card is ready`);
+    console.log(`→ See your card: ${dashboardUrl}`);
   }
 
   console.log('');

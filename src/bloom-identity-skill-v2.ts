@@ -767,12 +767,12 @@ function formatSuccessMessage(result: any): string {
 "${identityData.customTagline}"
 **Categories**: ${identityData.mainCategories.join(' • ')}`;
 
-  if (recommendations?.length > 0) {
-    msg += `\n\n🔍 **${recommendations.length} tools & skills matched to your taste**`;
-  }
-
-  if (result.dashboardUrl) {
-    msg += `\n→ See your recommendations: ${result.dashboardUrl}`;
+  if (recommendations?.length > 0 && result.dashboardUrl) {
+    msg += `\n\n🎴 **Your Taste Card is ready** — ${recommendations.length} tools & skills matched to your taste`;
+    msg += `\n→ See your card & recommendations: ${result.dashboardUrl}`;
+  } else if (result.dashboardUrl) {
+    msg += `\n\n🎴 **Your Taste Card is ready**`;
+    msg += `\n→ See your card: ${result.dashboardUrl}`;
   }
 
   return msg;
