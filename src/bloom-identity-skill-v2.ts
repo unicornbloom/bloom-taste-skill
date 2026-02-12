@@ -768,10 +768,10 @@ function formatSuccessMessage(result: any): string {
 **Categories**: ${identityData.mainCategories.join(' • ')}`;
 
   if (recommendations?.length > 0 && result.dashboardUrl) {
-    msg += `\n\n🎴 **Your Taste Card is ready** — ${recommendations.length} tools & skills matched to your taste`;
+    msg += `\n\n✨ **Your Taste Card is ready** — ${recommendations.length} tools & skills matched to your taste`;
     msg += `\n→ See your card & recommendations: ${result.dashboardUrl}`;
   } else if (result.dashboardUrl) {
-    msg += `\n\n🎴 **Your Taste Card is ready**`;
+    msg += `\n\n✨ **Your Taste Card is ready**`;
     msg += `\n→ See your card: ${result.dashboardUrl}`;
   }
 
