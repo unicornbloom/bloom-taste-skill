@@ -27,6 +27,7 @@
     "@coinbase/agentkit": "^0.10.4",
     "commander": "^11.1.0",
     "dotenv": "^17.2.4",
+    "groq-sdk": "^0.37.0",
     "jsonwebtoken": "^9.0.2",
     "twitter-api-v2": "^1.29.0",
     "viem": "^2.40.3"

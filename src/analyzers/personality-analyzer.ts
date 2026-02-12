@@ -6,6 +6,7 @@
  */
 
 import { PersonalityType } from '../types/personality';
+import { LLMPersonalityAnalyzer } from './llm-personality-analyzer';
 
 export interface UserData {
   sources: string[];
@@ -83,22 +84,49 @@ const TAGLINE_TEMPLATES = {
 };
 
 export class PersonalityAnalyzer {
+  private llm = new LLMPersonalityAnalyzer();
+
   /**
    * Main analysis method — calculates dimensions and determines personality
    */
   async analyze(userData: UserData): Promise<PersonalityAnalysis> {
     console.log('🤖 Analyzing user data for 2-axis personality classification...');
 
-    // Step 1: Calculate dimension scores
-    const dimensions = this.calculateDimensions(userData);
+    // Step 1: Calculate dimension scores (try LLM first, fallback to heuristics)
+    let dimensions: DimensionScores;
+    let llmCategories: string[] | null = null;
+
+    if (this.llm.isAvailable() && userData.conversationMemory) {
+      const conversationText = userData.conversationMemory.history.join('\n');
+      console.log('🧠 Attempting LLM-based personality analysis...');
+      const llmResult = await this.llm.analyze(conversationText);
+
+      if (llmResult) {
+        dimensions = {
+          conviction: llmResult.conviction,
+          intuition: llmResult.intuition,
+          contribution: llmResult.contribution,
+        };
+        llmCategories = llmResult.mainCategories;
+        console.log(`🧠 LLM Dimensions: Conviction=${dimensions.conviction}, Intuition=${dimensions.intuition}, Contribution=${dimensions.contribution}`);
+        console.log(`🧠 LLM Reasoning: C="${llmResult.reasoning.conviction}" I="${llmResult.reasoning.intuition}"`);
+      } else {
+        console.log('⚠️  LLM unavailable, using heuristics');
+        dimensions = this.calculateDimensions(userData);
+      }
+    } else {
+      dimensions = this.calculateDimensions(userData);
+    }
     console.log(`📊 Dimensions: Conviction=${dimensions.conviction}, Intuition=${dimensions.intuition}, Contribution=${dimensions.contribution}`);
 
     // Step 2: Classify personality type (contribution override logic)
     const personalityType = this.classifyPersonality(dimensions);
     console.log(`✨ Personality Type: ${personalityType}`);
 
-    // Step 3: Detect categories for tagline
-    const detectedCategories = this.detectCategories(userData);
+    // Step 3: Detect categories for tagline (prefer LLM categories if available)
+    const detectedCategories = llmCategories && llmCategories.length > 0
+      ? llmCategories
+      : this.detectCategories(userData);
     const topCategory = detectedCategories[0] || 'Tech';
 
     // Step 4: Generate dynamic tagline
