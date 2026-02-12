@@ -324,8 +324,7 @@ export class BloomIdentitySkillV2 {
         agentUserId = registration.agentUserId;
         console.log(`✅ Agent registered with wallet! User ID: ${agentUserId}`);
       } catch (walletError) {
-        console.warn('⚠️  Wallet-based registration failed, trying wallet-free save...');
-        console.warn('   Error:', walletError instanceof Error ? walletError.message : walletError);
+        console.debug('Wallet registration fallback:', walletError instanceof Error ? walletError.message : walletError);
 
         try {
           // Fallback: save without wallet signature
@@ -407,7 +406,7 @@ export class BloomIdentitySkillV2 {
             network: agentWallet.network,
           };
         } catch (error) {
-          console.warn('⚠️  SBT mint failed (skipping):', error);
+          console.debug('SBT mint skipped:', error);
         }
       }
 
@@ -762,101 +761,21 @@ export const bloomIdentitySkillV2 = {
  * Format success message for user
  */
 function formatSuccessMessage(result: any): string {
-  const { identityData, recommendations, mode, dimensions } = result;
+  const { identityData, recommendations } = result;
 
-  const modeEmoji = mode === 'manual' ? '📝' : '🤖';
+  let msg = `${getPersonalityEmoji(identityData.personalityType)} **${identityData.personalityType}**
+"${identityData.customTagline}"
+**Categories**: ${identityData.mainCategories.join(' • ')}`;
 
-  // Format 2x2 metrics display
-  let metricsDisplay = '';
-  if (dimensions) {
-    const isCultivator = identityData.personalityType === 'The Cultivator';
-    const contributionLine = isCultivator ? `   Contribution: ${dimensions.contribution}/100\n` : '';
-
-    metricsDisplay = `
-📊 **2x2 Metrics**
-   Conviction ${dimensions.conviction} ← → Curiosity ${100 - dimensions.conviction}
-   Intuition ${dimensions.intuition} ← → Analysis ${100 - dimensions.intuition}
-${contributionLine}
-`;
+  if (recommendations?.length > 0) {
+    msg += `\n\n🔍 **${recommendations.length} tools & skills matched to your taste**`;
   }
 
-  return `
-🎉 **Your Bloom Identity Card is Ready!** ${modeEmoji}
-
-${result.dashboardUrl ? `🌐 **View Your Card**\n→ ${result.dashboardUrl}\n\n💾 Save to your collection or share on X from the dashboard!\n` : ''}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${getPersonalityEmoji(identityData.personalityType)} **${identityData.personalityType}**
-💬 *"${identityData.customTagline}"*
-
-${identityData.customDescription}
-
-**Categories**: ${identityData.mainCategories.join(' • ')}
-${identityData.subCategories && identityData.subCategories.length > 0
-  ? `**Interests**: ${identityData.subCategories.join(' • ')}\n`
-  : ''}
-${metricsDisplay}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🎯 **Recommended for You** (${recommendations.length} total)
-
-${(() => {
-  const clawHubSkills = recommendations.filter((r: any) => r.source === 'ClawHub' || !r.source);
-  const claudeCodeSkills = recommendations.filter((r: any) => r.source === 'ClaudeCode');
-  const githubRepos = recommendations.filter((r: any) => r.source === 'GitHub');
-
-  let output = '';
-
-  // ClawHub Skills (top 3)
-  if (clawHubSkills.length > 0) {
-    output += '🦞 **ClawHub Skills**\n\n';
-    output += clawHubSkills.slice(0, 3).map((s: any, i: number) => {
-      const creatorInfo = s.creator ? ` • by @${s.creator}` : '';
-      const reasonLine = s.reason ? `\n   💡 ${s.reason}` : '';
-      return `${i + 1}. **${s.skillName}**${creatorInfo}
-   ${s.description}${reasonLine}
-   → ${s.url}`;
-    }).join('\n\n');
+  if (result.dashboardUrl) {
+    msg += `\n→ See your recommendations: ${result.dashboardUrl}`;
   }
 
-  // Claude Code Skills (top 2)
-  if (claudeCodeSkills.length > 0) {
-    if (output) output += '\n\n';
-    output += '🤖 **Claude Code Skills**\n\n';
-    output += claudeCodeSkills.slice(0, 2).map((s: any, i: number) => {
-      const creatorInfo = s.creator ? ` • by ${s.creator}` : '';
-      const reasonLine = s.reason ? `\n   💡 ${s.reason}` : '';
-      return `${i + 1}. **${s.skillName}**${creatorInfo}
-   ${s.description}${reasonLine}
-   → ${s.url}`;
-    }).join('\n\n');
-  }
-
-  // GitHub Repositories (top 3)
-  if (githubRepos.length > 0) {
-    if (output) output += '\n\n';
-    output += '🐙 **GitHub Repositories**\n\n';
-    output += githubRepos.slice(0, 3).map((s: any, i: number) => {
-      const starsInfo = s.stars ? ` ⭐ ${s.stars >= 1000 ? `${(s.stars / 1000).toFixed(1)}k` : s.stars}` : '';
-      const langInfo = s.language ? ` [${s.language}]` : '';
-      const reasonLine = s.reason ? `\n   💡 ${s.reason}` : '';
-      return `${i + 1}. **${s.skillName}**${starsInfo}${langInfo}
-   ${s.description}${reasonLine}
-   → ${s.url}`;
-    }).join('\n\n');
-  }
-
-  return output;
-})()}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🤖 **Your Agent Wallet is Ready**
-More functions on tipping, recommendations, and autonomous actions will come soon! 🚀
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${mode === 'manual' ? '📝 Q&A' : '🤖 On-chain'} • @openclaw @coinbase @base 🦞
-  `.trim();
+  return msg;
 }
 
 function getPersonalityEmoji(type: PersonalityType): string {

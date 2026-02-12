@@ -90,7 +90,7 @@ export class AgentWallet {
     } catch (error) {
       // ⭐ NEW: Fallback to local wallet (real wallet, not mock!)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.warn(`⚠️  CDP unavailable (${errorMessage}), using local wallet fallback`);
+      console.debug(`CDP unavailable (${errorMessage}), using local wallet fallback`);
 
       try {
         const localWallet = await this.createLocalWallet();
@@ -98,7 +98,7 @@ export class AgentWallet {
         return localWallet;
       } catch (localError) {
         // Last resort: mock wallet for testing
-        console.warn('⚠️  Local wallet creation failed, using mock wallet for testing');
+        console.debug('Local wallet creation failed, using mock wallet');
         const hash = this.simpleHash(this.userId);
         this.walletAddress = ('0x' + hash.substring(0, 40)) as `0x${string}`;
         console.log(`🧪 Mock wallet for ${this.userId}: ${this.walletAddress}`);
@@ -465,7 +465,7 @@ export class AgentWallet {
         x402Endpoint: result.data.x402Endpoint,
       };
     } catch (error) {
-      console.error('❌ Bloom registration failed:', error);
+      console.debug('Bloom registration failed:', error);
       throw new Error(`Bloom registration failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -491,7 +491,7 @@ export class AgentWallet {
 
       throw new Error('No wallet available for signing (neither CDP nor local)');
     } catch (error) {
-      console.error('❌ Failed to sign message:', error);
+      console.debug('Sign message failed:', error);
       throw new Error(`Message signing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -657,7 +657,7 @@ export class AgentWallet {
       balance = await this.getBalance();
     } catch (error) {
       // Balance check may fail if wallet not fully initialized
-      console.warn('⚠️  Could not fetch balance:', error);
+      console.debug('Could not fetch balance:', error);
       balance = undefined;
     }
 

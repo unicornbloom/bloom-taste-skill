@@ -56,85 +56,23 @@ async function main() {
 }
 
 function formatResult(result: any): void {
-  const { identityData, agentWallet, recommendations, mode, dimensions, dashboardUrl, actions } = result;
+  const { identityData, recommendations, dashboardUrl } = result;
 
-  const modeEmoji = mode === 'manual' ? '📝' : '🤖';
-
-  // Top border
-  console.log('\n═══════════════════════════════════════════════════════');
-  console.log(`🎉 Your Bloom Identity Card is ready! ${modeEmoji}`);
-  console.log('═══════════════════════════════════════════════════════\n');
-
-  // Dashboard URL first (most important)
-  if (dashboardUrl) {
-    console.log('🔗 VIEW YOUR IDENTITY CARD (Click below):\n');
-    console.log(`   ${dashboardUrl}\n`);
-  }
-
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-  // Personality (real data from analysis)
-  console.log(`${getPersonalityEmoji(identityData.personalityType)} ${identityData.personalityType}`);
-  console.log(`💬 "${identityData.customTagline}"\n`);
-  console.log(`📝 ${identityData.customDescription}\n`);
-
-  // Categories (real data)
-  console.log(`🏷️  Categories: ${identityData.mainCategories.join(', ')}`);
-  if (identityData.subCategories && identityData.subCategories.length > 0) {
-    console.log(`   Interests: ${identityData.subCategories.join(', ')}`);
-  }
+  console.log('');
+  console.log(`${getPersonalityEmoji(identityData.personalityType)} You're **${identityData.personalityType}**`);
+  console.log(`"${identityData.customTagline}"`);
+  console.log(`Categories: ${identityData.mainCategories.join(' • ')}`);
   console.log('');
 
-  // 2x2 Metrics (real data if available)
-  if (dimensions) {
-    const isCultivator = identityData.personalityType === 'The Cultivator';
-
-    console.log('📊 2x2 Metrics:');
-    console.log(`   Conviction ${dimensions.conviction} ← → Curiosity ${100 - dimensions.conviction}`);
-    console.log(`   Intuition ${dimensions.intuition} ← → Analysis ${100 - dimensions.intuition}`);
-
-    // Only show contribution for The Cultivator
-    if (isCultivator) {
-      console.log(`   Contribution: ${dimensions.contribution}/100`);
-    }
-    console.log('');
+  if (recommendations?.length > 0) {
+    console.log(`🔍 ${recommendations.length} tools & skills matched to your taste`);
   }
 
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-  // Skills (diverse recommendations from all sources)
-  console.log(`🎯 Recommended for You (${recommendations.length}):\n`);
-  recommendations.slice(0, 7).forEach((skill: any, i: number) => {
-    const creatorInfo = skill.creator ? ` • ${skill.creator}` : '';
-    console.log(`${i + 1}. ${skill.skillName}${creatorInfo}`);
-    console.log(`   ${skill.description}`);
-    if (skill.reason) {
-      console.log(`   💡 ${skill.reason}`);
-    }
-    console.log(`   → ${skill.url}\n`);
-  });
-
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-  // Wallet info with marketing message
-  console.log('🤖 Your Agent Wallet Created\n');
-  console.log(`   Network: ${agentWallet?.network || 'Base'}`);
-  console.log('   Status: ✅ Wallet generated and registered\n');
-  console.log('   💡 Use your agent wallet to tip skill creators!');
-  console.log('   ⚠️  Tipping, payments, and management features coming soon');
-  console.log('   🔒 Do not deposit funds - withdrawals not ready yet\n');
-
-  if (actions?.mint) {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-    console.log('🪪 SBT Minted on Base:\n');
-    console.log(`   Contract: ${actions.mint.contractAddress}`);
-    console.log(`   Tx: ${actions.mint.txHash}`);
-    console.log(`   Network: ${actions.mint.network}`);
-    console.log('');
+  if (dashboardUrl) {
+    console.log(`→ See your recommendations: ${dashboardUrl}`);
   }
 
-  console.log('═══════════════════════════════════════════════════════\n');
-  console.log(`${mode === 'manual' ? '📝 Q&A' : '🤖 On-chain'} • @openclaw @coinbase @base 🦞\n`);
+  console.log('');
 }
 
 function getPersonalityEmoji(type: string): string {
