@@ -3,6 +3,10 @@
   "version": "2.0.0",
   "description": "OpenClaw skill for generating Bloom Identity Cards",
   "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./recommendation-pipeline": "./src/recommendation-pipeline.ts"
+  },
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "tsc",
