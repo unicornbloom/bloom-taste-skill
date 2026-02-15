@@ -17,10 +17,10 @@ import { walletStorage } from './blockchain/wallet-storage';
 import { mintIdentitySbt } from './blockchain/identity-sbt';
 import { captureAndUploadCardImage } from './blockchain/card-image';
 import { TwitterShare, createTwitterShare } from './integrations/twitter-share';
-import { ClawHubClient, createClawHubClient } from './integrations/clawhub-client';
 import { ClaudeCodeClient, createClaudeCodeClient } from './integrations/claude-code-client';
 import { GitHubRecommendations } from './github-recommendations';
 import { PersonalityType } from './types/personality';
+import { CATEGORY_KEYWORDS } from './types/categories';
 
 // Re-export PersonalityType for backwards compatibility
 export { PersonalityType };
@@ -31,6 +31,11 @@ export interface IdentityData {
   customDescription: string;
   mainCategories: string[];
   subCategories: string[];
+  dimensions?: {
+    conviction: number;
+    intuition: number;
+    contribution: number;
+  };
 }
 
 export interface SkillRecommendation {
@@ -43,9 +48,10 @@ export interface SkillRecommendation {
   reason?: string;
   creator?: string;
   creatorUserId?: number | string;
-  source?: 'ClawHub' | 'ClaudeCode' | 'GitHub';
+  source?: 'ClaudeCode' | 'GitHub';
   stars?: number;
   language?: string;
+  categoryGroup?: string; // Which user category section this belongs to
 }
 
 /**
@@ -67,7 +73,6 @@ export class BloomIdentitySkillV2 {
   private categoryMapper: CategoryMapper;
   private agentWallet: AgentWallet | null = null;
   private twitterShare: TwitterShare;
-  private clawHubClient: ClawHubClient;
   private claudeCodeClient: ClaudeCodeClient;
   private githubRecommendations: GitHubRecommendations;
 
@@ -77,7 +82,6 @@ export class BloomIdentitySkillV2 {
     this.manualQA = new ManualQAFallback();
     this.categoryMapper = new CategoryMapper();
     this.twitterShare = createTwitterShare();
-    this.clawHubClient = createClawHubClient();
     this.claudeCodeClient = createClaudeCodeClient();
     this.githubRecommendations = new GitHubRecommendations(process.env.GITHUB_TOKEN);
   }
@@ -234,6 +238,7 @@ export class BloomIdentitySkillV2 {
                 ? analysis.detectedCategories
                 : this.categoryMapper.getMainCategories(analysis.personalityType),
               subCategories: analysis.detectedInterests,
+              dimensions: analysis.dimensions,
             };
 
             // ⭐ Capture 2x2 metrics
@@ -488,89 +493,43 @@ export class BloomIdentitySkillV2 {
   }
 
   /**
-   * Recommend skills from both ClawHub and GitHub
+   * Recommend skills grouped by user's main categories
    *
-   * Searches ClawHub for OpenClaw skills and GitHub for relevant repositories,
-   * then merges and ranks results by match score.
+   * Sources: GitHub repos (quality-gated by stars/activity) + Claude Code awesome lists.
+   * Deduplicates by URL, then groups by user's mainCategories with 3-7 per group.
    */
   private async recommendSkills(identity: IdentityData): Promise<SkillRecommendation[]> {
     console.log(`🔍 Searching for recommendations matching ${identity.personalityType}...`);
 
     try {
-      // Search all sources in parallel
-      const [clawHubSkills, claudeCodeSkills, githubRepos] = await Promise.all([
-        this.getClawHubRecommendations(identity),
+      // Search both sources in parallel
+      const [claudeCodeSkills, githubRepos] = await Promise.all([
         this.getClaudeCodeRecommendations(identity),
         this.getGitHubRecommendations(identity),
       ]);
 
-      // Merge and sort by score
-      const allRecommendations = [...clawHubSkills, ...claudeCodeSkills, ...githubRepos];
-      allRecommendations.sort((a, b) => b.matchScore - a.matchScore);
+      // Merge and deduplicate by URL — keep highest-scoring entry
+      const all = [...claudeCodeSkills, ...githubRepos];
+      const byUrl = new Map<string, SkillRecommendation>();
+      for (const rec of all) {
+        const key = rec.url.toLowerCase().replace(/\/+$/, '');
+        const existing = byUrl.get(key);
+        if (!existing || rec.matchScore > existing.matchScore) {
+          byUrl.set(key, rec);
+        }
+      }
+      const deduplicated = Array.from(byUrl.values());
 
-      // Apply diversity constraint: max 2 per primary category, at least 3 different categories
-      const diverseRecommendations = this.applyDiversityConstraint(allRecommendations, 7);
+      // Group by user's main categories (3-7 per category)
+      const grouped = this.groupByCategory(deduplicated, identity.mainCategories);
 
-      console.log(`✅ Found ${clawHubSkills.length} ClawHub + ${claudeCodeSkills.length} Claude Code + ${githubRepos.length} GitHub recommendations`);
-      console.log(`   Returning ${diverseRecommendations.length} diverse picks from ${allRecommendations.length} total`);
+      console.log(`✅ Found ${claudeCodeSkills.length} Claude Code + ${githubRepos.length} GitHub recommendations`);
+      console.log(`   Returning ${grouped.length} skills across ${identity.mainCategories.length} categories`);
 
-      return diverseRecommendations;
+      return grouped;
 
     } catch (error) {
       console.error('❌ Recommendation search failed:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Get recommendations from ClawHub
-   */
-  private async getClawHubRecommendations(identity: IdentityData): Promise<SkillRecommendation[]> {
-    try {
-      const clawHubSkills = await this.clawHubClient.getRecommendations({
-        mainCategories: identity.mainCategories,
-        subCategories: identity.subCategories,
-        limit: 20,
-      });
-
-      // Convert ClawHub skills to our format and calculate enhanced match scores
-      return clawHubSkills.map(skill => {
-        // Base score from ClawHub similarity (0-100)
-        let matchScore = skill.similarityScore * 100;
-
-        // Boost score based on personality match
-        const personalityKeywords = this.getPersonalityKeywords(identity.personalityType);
-        const descLower = skill.description.toLowerCase();
-        const matchedKeywords = personalityKeywords.filter(k => descLower.includes(k));
-        matchScore += matchedKeywords.length * 5;
-
-        // Category match boost
-        const matchedCategories = skill.categories?.filter(c =>
-          identity.mainCategories.includes(c) || identity.subCategories.includes(c.toLowerCase())
-        ) || [];
-        if (matchedCategories.length > 0) {
-          matchScore += 10;
-        }
-
-        // Generate recommendation reason
-        const reason = this.generateReason(matchedCategories, matchedKeywords, identity);
-
-        return {
-          skillId: skill.slug,
-          skillName: skill.name,
-          description: skill.description,
-          url: skill.url,
-          categories: skill.categories || ['General'],
-          matchScore: Math.min(matchScore, 100),
-          reason,
-          creator: skill.creator,
-          creatorUserId: skill.creatorUserId,
-          source: 'ClawHub' as const,
-        };
-      }).sort((a, b) => b.matchScore - a.matchScore);
-
-    } catch (error) {
-      console.error('⚠️  ClawHub search failed:', error);
       return [];
     }
   }
@@ -583,24 +542,39 @@ export class BloomIdentitySkillV2 {
       const claudeCodeSkills = await this.claudeCodeClient.getRecommendations({
         mainCategories: identity.mainCategories,
         subCategories: identity.subCategories,
-        limit: 10,
+        limit: 20,
       });
 
-      // Convert to our SkillRecommendation format with reasons
+      // Convert to our SkillRecommendation format with real scores
       return claudeCodeSkills.map(skill => {
+        // Normalize raw keyword score to 0-100
+        // Typical raw scores: 2-30+ (10/category + 2/word + 5/official)
+        const CLAUDE_CODE_SCORE_CEILING = 30;
+        const rawScore = skill.matchScore || 0;
+        const normalizedScore = Math.min(Math.round((rawScore / CLAUDE_CODE_SCORE_CEILING) * 100), 100);
+
         const searchText = `${skill.skillName} ${skill.description} ${skill.category || ''}`.toLowerCase();
         const matchedCategory = [...identity.mainCategories, ...identity.subCategories]
           .find(c => searchText.includes(c.toLowerCase()));
 
+        const { boost, matchedKeywords } = this.calculatePersonalityBoost(
+          { description: skill.description, categories: skill.category ? [skill.category] : [] },
+          identity,
+        );
+
         const typeName = identity.personalityType.replace(/^The /, '');
-        const reason = matchedCategory
-          ? `Because you're into ${matchedCategory}`
-          : `Fits your ${typeName} profile`;
+        const reason = matchedCategory && matchedKeywords.length > 0
+          ? `Because you're into ${matchedCategory} — fits your ${typeName} style`
+          : matchedCategory
+            ? `Because you're into ${matchedCategory}`
+            : matchedKeywords.length > 0
+              ? `Fits your ${typeName} style`
+              : `Fits your ${typeName} profile`;
 
         return {
           skillId: skill.url,
           skillName: skill.skillName,
-          matchScore: 85,
+          matchScore: Math.min(normalizedScore + boost, 100),
           reason,
           description: skill.description,
           url: skill.url,
@@ -620,7 +594,7 @@ export class BloomIdentitySkillV2 {
    */
   private async getGitHubRecommendations(identity: IdentityData): Promise<SkillRecommendation[]> {
     try {
-      return await this.githubRecommendations.getRecommendations(identity, 15);
+      return await this.githubRecommendations.getRecommendations(identity, 20);
     } catch (error) {
       console.error('⚠️  GitHub search failed:', error);
       return [];
@@ -628,61 +602,93 @@ export class BloomIdentitySkillV2 {
   }
 
   /**
-   * Apply diversity constraint to recommendations
-   * - Max 2 skills per primary category
-   * - At least 3 different categories in top N
-   * - Fill remaining slots with highest-scoring from any category
+   * Group skills by user's main categories
+   *
+   * Each skill is assigned to the best-matching user category.
+   * Returns 3-7 skills per category (above score threshold), sorted by score.
+   * Skills are tagged with `categoryGroup` so consumers can render sections.
    */
-  private applyDiversityConstraint(
-    recommendations: SkillRecommendation[],
-    maxResults: number
+  private groupByCategory(
+    skills: SkillRecommendation[],
+    mainCategories: string[],
   ): SkillRecommendation[] {
-    const MAX_PER_CATEGORY = 2;
-    const MIN_CATEGORIES = 3;
+    const MIN_PER_CATEGORY = 3;
+    const MAX_PER_CATEGORY = 7;
+    const SCORE_THRESHOLD = 25; // Minimum score to include
 
-    const selected: SkillRecommendation[] = [];
-    const categoryCounts: Record<string, number> = {};
+    // Build category buckets
+    const buckets = new Map<string, SkillRecommendation[]>();
+    for (const cat of mainCategories) {
+      buckets.set(cat, []);
+    }
 
-    const getPrimaryCategory = (skill: SkillRecommendation): string => {
-      return skill.categories?.[0] || skill.source || 'General';
-    };
-
-    // Pass 1: Pick top skill from each unique category (ensure diversity)
-    const seenCategories = new Set<string>();
-    for (const skill of recommendations) {
-      const cat = getPrimaryCategory(skill);
-      if (!seenCategories.has(cat) && selected.length < maxResults) {
-        selected.push(skill);
-        seenCategories.add(cat);
-        categoryCounts[cat] = 1;
-        if (seenCategories.size >= MIN_CATEGORIES && selected.length >= MIN_CATEGORIES) break;
+    // Assign each skill to its best-matching category
+    for (const skill of skills) {
+      const bestCategory = this.findBestCategory(skill, mainCategories);
+      if (bestCategory) {
+        buckets.get(bestCategory)!.push({ ...skill, categoryGroup: bestCategory });
       }
     }
 
-    // Pass 2: Fill remaining slots by score, respecting max per category
-    for (const skill of recommendations) {
-      if (selected.length >= maxResults) break;
-      if (selected.includes(skill)) continue;
+    // Sort within each bucket by score, apply dynamic 3-7 limit
+    const result: SkillRecommendation[] = [];
+    for (const cat of mainCategories) {
+      const bucket = buckets.get(cat)!;
+      bucket.sort((a, b) => b.matchScore - a.matchScore);
 
-      const cat = getPrimaryCategory(skill);
-      const count = categoryCounts[cat] || 0;
-      if (count < MAX_PER_CATEGORY) {
-        selected.push(skill);
-        categoryCounts[cat] = count + 1;
-      }
+      // Dynamic count: take all above threshold, capped at 7, minimum 3
+      let count = bucket.filter(s => s.matchScore >= SCORE_THRESHOLD).length;
+      count = Math.max(Math.min(count, MAX_PER_CATEGORY), Math.min(MIN_PER_CATEGORY, bucket.length));
+
+      result.push(...bucket.slice(0, count));
     }
 
-    // Pass 3: If still under maxResults, fill with best remaining (ignore cap)
-    if (selected.length < maxResults) {
-      for (const skill of recommendations) {
-        if (selected.length >= maxResults) break;
-        if (!selected.includes(skill)) {
-          selected.push(skill);
+    return result;
+  }
+
+  /**
+   * Find the best-matching user category for a skill
+   * Uses the shared CATEGORY_KEYWORDS for robust matching beyond just category name words.
+   */
+  private findBestCategory(skill: SkillRecommendation, mainCategories: string[]): string | null {
+    const skillText = [
+      ...skill.categories,
+      skill.description,
+      skill.skillName,
+    ].join(' ').toLowerCase();
+
+    let bestCat: string | null = null;
+    let bestScore = 0;
+
+    for (const cat of mainCategories) {
+      let score = 0;
+
+      // Exact category label match on the skill
+      if (skill.categories.some(c => c.toLowerCase() === cat.toLowerCase())) {
+        score += 10;
+      }
+
+      // Use canonical keyword list for this category (e.g., "Crypto" checks for
+      // 'defi', 'web3', 'blockchain', 'token', etc.)
+      const keywords = CATEGORY_KEYWORDS[cat as keyof typeof CATEGORY_KEYWORDS] || [];
+      for (const kw of keywords) {
+        if (skillText.includes(kw)) {
+          score += 2;
         }
       }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestCat = cat;
+      }
     }
 
-    return selected;
+    // If no strong match, assign to first category as fallback
+    if (bestScore === 0 && mainCategories.length > 0) {
+      bestCat = mainCategories[0];
+    }
+
+    return bestCat;
   }
 
   /**
@@ -709,13 +715,102 @@ export class BloomIdentitySkillV2 {
   /**
    * Get personality-specific keywords for matching
    */
+  /**
+   * Calculate personality boost for a skill based on keyword + dimension signals
+   */
+  private calculatePersonalityBoost(
+    skill: { description: string; categories?: string[]; stars?: number; source?: string },
+    identity: IdentityData,
+  ): { boost: number; matchedKeywords: string[] } {
+    const personalityKeywords = this.getPersonalityKeywords(identity.personalityType);
+    const descLower = skill.description.toLowerCase();
+    const catText = (skill.categories || []).join(' ').toLowerCase();
+    const searchText = `${descLower} ${catText}`;
+
+    // 1. Keyword matching — up to +15, diminishing returns per keyword
+    const matchedKeywords = personalityKeywords.filter(k => searchText.includes(k));
+    // First 3 keywords: 3pts each, next 3: 2pts each, rest: 1pt each
+    let keywordBoost = 0;
+    for (let i = 0; i < matchedKeywords.length; i++) {
+      if (i < 3) keywordBoost += 3;
+      else if (i < 6) keywordBoost += 2;
+      else keywordBoost += 1;
+    }
+    keywordBoost = Math.min(keywordBoost, 15);
+
+    // 2. Dimension-aware structural bonuses — up to +15
+    let dimensionBoost = 0;
+    const dims = identity.dimensions;
+    if (dims) {
+      // High conviction (>65): boost exact category matches
+      if (dims.conviction > 65) {
+        const hasExactCategory = (skill.categories || []).some(c => {
+          const lower = c.toLowerCase();
+          return identity.mainCategories.some(mc => mc.toLowerCase() === lower) ||
+                 identity.subCategories.some(sc => sc.toLowerCase() === lower);
+        });
+        if (hasExactCategory) dimensionBoost += 8;
+      }
+
+      // Low conviction (<35, Explorer-like): boost novel/adjacent categories
+      if (dims.conviction < 35) {
+        const hasNovelCategory = (skill.categories || []).some(c => {
+          const lower = c.toLowerCase();
+          return !identity.mainCategories.some(mc => mc.toLowerCase() === lower) &&
+                 !identity.subCategories.some(sc => sc.toLowerCase() === lower);
+        });
+        if (hasNovelCategory) dimensionBoost += 5;
+      }
+
+      // High intuition (>65): boost newer/early-stage tools
+      if (dims.intuition > 65) {
+        const earlyKeywords = /\b(early|beta|alpha|experimental)\b/i;
+        const isEarlyStage = (skill.stars != null && skill.stars < 500) ||
+          earlyKeywords.test(searchText);
+        if (isEarlyStage) dimensionBoost += 6;
+      }
+
+      // Low intuition (<35): boost popular, established tools
+      if (dims.intuition < 35) {
+        const isEstablished = skill.stars != null && skill.stars > 5000;
+        if (isEstablished) dimensionBoost += 6;
+      }
+
+      // High contribution (>55): boost community/collaborative tools
+      if (dims.contribution > 55) {
+        const isCommunity = searchText.includes('community') || searchText.includes('collaborat') ||
+          searchText.includes('contribut') || searchText.includes('open-source') || searchText.includes('governance');
+        if (isCommunity) dimensionBoost += 6;
+      }
+
+      dimensionBoost = Math.min(dimensionBoost, 15);
+    }
+
+    return { boost: keywordBoost + dimensionBoost, matchedKeywords };
+  }
+
   private getPersonalityKeywords(type: PersonalityType): string[] {
     const keywordMap = {
-      [PersonalityType.THE_VISIONARY]: ['innovative', 'early-stage', 'vision', 'future', 'paradigm'],
-      [PersonalityType.THE_EXPLORER]: ['diverse', 'experimental', 'discovery', 'research', 'explore'],
-      [PersonalityType.THE_CULTIVATOR]: ['community', 'social', 'collaborate', 'nurture', 'build'],
-      [PersonalityType.THE_OPTIMIZER]: ['efficiency', 'data-driven', 'optimize', 'systematic', 'analytics'],
-      [PersonalityType.THE_INNOVATOR]: ['technology', 'ai', 'automation', 'creative', 'cutting-edge'],
+      [PersonalityType.THE_VISIONARY]: [
+        'innovative', 'early-stage', 'vision', 'future', 'paradigm',
+        'pioneer', 'disrupt', 'bold', 'ambitious', 'frontier', 'emerging', 'breakthrough',
+      ],
+      [PersonalityType.THE_EXPLORER]: [
+        'diverse', 'experimental', 'discovery', 'research', 'explore',
+        'curiosity', 'variety', 'breadth', 'survey', 'sandbox', 'prototype', 'tinker',
+      ],
+      [PersonalityType.THE_CULTIVATOR]: [
+        'community', 'social', 'collaborate', 'nurture', 'build',
+        'ecosystem', 'mentor', 'contribute', 'share', 'governance', 'collective', 'stewardship',
+      ],
+      [PersonalityType.THE_OPTIMIZER]: [
+        'efficiency', 'data-driven', 'optimize', 'systematic', 'analytics',
+        'performance', 'metrics', 'roi', 'benchmark', 'refine', 'precision', 'reliable',
+      ],
+      [PersonalityType.THE_INNOVATOR]: [
+        'technology', 'ai', 'automation', 'creative', 'cutting-edge',
+        'novel', 'hybrid', 'synthesis', 'interdisciplinary', 'integrate', 'cross-domain', 'generative',
+      ],
     };
     return keywordMap[type] || [];
   }

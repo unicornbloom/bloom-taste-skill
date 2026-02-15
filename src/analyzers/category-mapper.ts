@@ -1,24 +1,22 @@
 /**
  * Category Mapper
  *
- * Maps personality types to main categories for project matching
+ * Provides fallback categories when conversation analysis detects nothing.
+ * Categories represent WHAT the user is interested in — they come from
+ * conversation analysis, not personality type. This fallback is a last resort.
  */
 
 import { PersonalityType } from '../types/personality';
+import { DEFAULT_FALLBACK_CATEGORIES } from '../types/categories';
 
 export class CategoryMapper {
   /**
-   * Get main categories for a personality type
+   * Get fallback categories when conversation analysis returns nothing.
+   *
+   * Returns generic popular categories regardless of personality type,
+   * since personality (HOW you think) doesn't determine categories (WHAT you're into).
    */
-  getMainCategories(personalityType: PersonalityType): string[] {
-    const categoryMap: Record<PersonalityType, string[]> = {
-      [PersonalityType.THE_VISIONARY]: ['Crypto', 'DeFi', 'Web3', 'Blockchain'],
-      [PersonalityType.THE_EXPLORER]: ['Education', 'Learning', 'Knowledge', 'Research'],
-      [PersonalityType.THE_CULTIVATOR]: ['Community', 'Social', 'Content', 'Collaboration'],
-      [PersonalityType.THE_OPTIMIZER]: ['Productivity', 'Tools', 'Efficiency', 'Automation'],
-      [PersonalityType.THE_INNOVATOR]: ['AI Tools', 'Technology', 'Innovation', 'Machine Learning'],
-    };
-
-    return categoryMap[personalityType];
+  getMainCategories(_personalityType: PersonalityType): string[] {
+    return [...DEFAULT_FALLBACK_CATEGORIES];
   }
 }

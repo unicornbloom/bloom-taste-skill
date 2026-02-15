@@ -47,6 +47,12 @@ const SKILL_REPOS = [
     url: 'https://github.com/tonysurfly/awesome-claude',
     type: 'community' as const,
   },
+  {
+    owner: 'VoltAgent',
+    repo: 'awesome-openclaw-skills',
+    url: 'https://github.com/VoltAgent/awesome-openclaw-skills',
+    type: 'community' as const,
+  },
 ];
 
 export interface ClaudeCodeSkill {
@@ -57,6 +63,7 @@ export interface ClaudeCodeSkill {
   creator?: string;
   type: 'official' | 'community';
   source: 'ClaudeCode';
+  matchScore?: number; // Raw keyword match score from matchSkills()
 }
 
 export interface ClaudeCodeSearchOptions {
@@ -262,7 +269,7 @@ export class ClaudeCodeClient {
       })
       .filter(({ score }) => score > 0) // Only include matches
       .sort((a, b) => b.score - a.score) // Sort by score
-      .map(({ skill }) => skill); // Return skills
+      .map(({ skill, score }) => ({ ...skill, matchScore: score })); // Preserve score
   }
 
   /**

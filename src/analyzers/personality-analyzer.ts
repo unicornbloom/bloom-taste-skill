@@ -6,6 +6,7 @@
  */
 
 import { PersonalityType } from '../types/personality';
+import { CATEGORY_KEYWORDS } from '../types/categories';
 
 export interface UserData {
   sources: string[];
@@ -48,25 +49,6 @@ export interface PersonalityAnalysis {
   dimensions: DimensionScores;
   confidence: number;
 }
-
-/**
- * Category keywords for tagline generation
- * Expanded with more specific terms per category.
- * detectCategories() uses frequency-weighted scoring — a single mention
- * of a common word won't label someone into a category.
- */
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  'AI Tools': ['ai', 'gpt', 'llm', 'machine learning', 'neural', 'model', 'chatbot', 'openai', 'anthropic', 'claude', 'copilot', 'prompt', 'inference', 'transformer', 'agent'],
-  'Productivity': ['productivity', 'workflow', 'automation', 'efficiency', 'task management', 'notion', 'calendar', 'time tracking', 'optimize', 'systematic'],
-  'Wellness': ['wellness', 'health', 'fitness', 'meditation', 'mindfulness', 'mental health', 'yoga', 'sleep', 'nutrition', 'self-care', 'wellbeing'],
-  'Education': ['education', 'learning', 'course', 'teach', 'knowledge', 'tutorial', 'study', 'mentor', 'curriculum', 'workshop', 'training'],
-  'Crypto': ['crypto', 'defi', 'web3', 'blockchain', 'token', 'dao', 'nft', 'onchain', 'smart contract', 'wallet', 'protocol', 'ethereum', 'solana', 'base'],
-  'Lifestyle': ['lifestyle', 'fashion', 'travel', 'personal brand', 'food', 'photography'],
-  'Design': ['design', 'ui', 'ux', 'figma', 'creative', 'visual', 'typography', 'layout', 'prototype'],
-  'Development': ['development', 'coding', 'programming', 'software', 'engineering', 'code', 'developer', 'api', 'framework', 'architecture', 'debugging', 'typescript', 'python', 'rust'],
-  'Marketing': ['marketing', 'growth', 'seo', 'content strategy', 'advertising', 'brand', 'conversion', 'funnel', 'campaign', 'audience'],
-  'Finance': ['finance', 'investing', 'trading', 'portfolio', 'wealth', 'stock', 'market', 'budget', 'revenue'],
-};
 
 // Minimum keyword frequency score to qualify as a detected category
 const MIN_CATEGORY_SCORE = 3;

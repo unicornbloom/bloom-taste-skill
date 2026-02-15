@@ -5,6 +5,8 @@
  * when permissions are denied or data is unavailable.
  */
 
+import { CATEGORY_KEYWORDS } from '../types/categories';
+
 export interface TwitterData {
   bio: string;
   following: string[];  // Accounts they follow
@@ -517,22 +519,9 @@ export class EnhancedDataCollector {
   private extractTopicsFromText(text: string): string[] {
     const lowerText = text.toLowerCase();
 
-    const topicPatterns: Record<string, string[]> = {
-      'AI Tools': ['ai', 'gpt', 'llm', 'chatbot', 'machine learning', 'neural', 'openai', 'prompt', 'model', 'inference', 'agent'],
-      'Crypto': ['crypto', 'blockchain', 'defi', 'web3', 'token', 'nft', 'dao', 'onchain', 'smart contract', 'protocol', 'wallet'],
-      'Productivity': ['productivity', 'workflow', 'automation', 'task', 'efficiency', 'optimize', 'systematic', 'time management'],
-      'Wellness': ['wellness', 'health', 'fitness', 'meditation', 'mindfulness', 'yoga', 'sleep', 'mental health', 'self-care'],
-      'Education': ['education', 'learning', 'course', 'tutorial', 'teach', 'mentor', 'study', 'workshop', 'knowledge'],
-      'Development': ['development', 'coding', 'programming', 'software', 'engineering', 'code', 'developer', 'api', 'architecture', 'debugging'],
-      'Marketing': ['marketing', 'growth', 'seo', 'content strategy', 'advertising', 'brand', 'conversion', 'campaign'],
-      'Finance': ['finance', 'investing', 'trading', 'money', 'wealth', 'portfolio', 'stock', 'market'],
-      'Design': ['design', 'ui', 'ux', 'figma', 'creative', 'visual', 'prototype'],
-      'Social': ['social', 'community', 'networking', 'collaboration', 'forum', 'discord'],
-    };
-
     const topicScores: Array<{ topic: string; score: number }> = [];
 
-    for (const [topic, keywords] of Object.entries(topicPatterns)) {
+    for (const [topic, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
       const distinctMatches = keywords.filter(kw => lowerText.includes(kw)).length;
       if (distinctMatches >= 2) {
         topicScores.push({ topic, score: distinctMatches });

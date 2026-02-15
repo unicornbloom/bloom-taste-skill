@@ -12,6 +12,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { CATEGORY_KEYWORDS } from '../types/categories';
 
 export interface SessionMessage {
   role: 'user' | 'assistant';
@@ -182,21 +183,7 @@ export class OpenClawSessionReader {
     const allText = userMessages.join(' ').toLowerCase();
     const topics: string[] = [];
 
-    // Topic keyword patterns
-    const topicPatterns: Record<string, string[]> = {
-      'AI Tools': ['ai', 'gpt', 'llm', 'chatbot', 'machine learning', 'neural network'],
-      'Crypto': ['crypto', 'blockchain', 'defi', 'web3', 'token', 'nft', 'dao'],
-      'Productivity': ['productivity', 'workflow', 'automation', 'task', 'efficiency'],
-      'Wellness': ['wellness', 'health', 'fitness', 'meditation', 'mindfulness'],
-      'Education': ['education', 'learning', 'course', 'tutorial', 'teach'],
-      'Development': ['development', 'coding', 'programming', 'software', 'engineering'],
-      'Marketing': ['marketing', 'growth', 'seo', 'content', 'advertising'],
-      'Finance': ['finance', 'investing', 'trading', 'money', 'wealth'],
-      'Design': ['design', 'ui', 'ux', 'creative', 'art'],
-      'Social': ['social', 'community', 'networking', 'collaboration'],
-    };
-
-    for (const [topic, keywords] of Object.entries(topicPatterns)) {
+    for (const [topic, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
       const matches = keywords.filter(kw => allText.includes(kw)).length;
       if (matches >= 2) {
         topics.push(topic);

@@ -9,6 +9,8 @@
  * - HTTP API: https://clawhub.ai/api/v1/
  */
 
+import { CATEGORY_KEYWORDS } from '../types/categories';
+
 const CLAWHUB_API_BASE = 'https://clawhub.ai/api/v1';
 
 export interface ClawHubSkill {
@@ -176,19 +178,7 @@ export class ClawHubClient {
     const categories: string[] = [];
     const text = `${slug} ${description}`.toLowerCase();
 
-    // Category keywords mapping
-    const categoryKeywords: Record<string, string[]> = {
-      'Crypto': ['crypto', 'blockchain', 'defi', 'web3', 'token', 'wallet', 'nft', 'dao'],
-      'AI Tools': ['ai', 'gpt', 'llm', 'machine learning', 'ml', 'chatbot', 'openai'],
-      'Productivity': ['productivity', 'workflow', 'automation', 'task', 'calendar', 'note'],
-      'Marketing': ['marketing', 'seo', 'analytics', 'growth', 'email', 'social'],
-      'Developer Tools': ['dev', 'developer', 'code', 'git', 'github', 'api', 'sdk'],
-      'Data': ['data', 'database', 'sql', 'analytics', 'visualization'],
-      'Trading': ['trading', 'exchange', 'binance', 'stock', 'market'],
-      'Content': ['content', 'writing', 'blog', 'article', 'editor'],
-    };
-
-    for (const [category, keywords] of Object.entries(categoryKeywords)) {
+    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
       if (keywords.some(keyword => text.includes(keyword))) {
         categories.push(category);
       }

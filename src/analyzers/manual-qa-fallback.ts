@@ -124,35 +124,36 @@ export class ManualQAFallback {
     personalityType: PersonalityType,
     answers: ManualAnswer[]
   ): ManualQAResult {
+    // mainCategories use canonical names only; non-canonical terms go to subCategories
     const configs = {
       [PersonalityType.THE_VISIONARY]: {
         tagline: 'See beyond the hype',
         description: 'An early believer in paradigm-shifting technologies. Champions Web3 and decentralized innovation.',
-        mainCategories: ['Crypto', 'DeFi', 'Web3', 'Blockchain'],
-        subCategories: ['DeFi', 'DAOs', 'NFTs', 'Layer 2'],
+        mainCategories: ['Crypto', 'AI Tools', 'Finance'],
+        subCategories: ['DeFi', 'DAOs', 'NFTs', 'Layer 2', 'Web3'],
       },
       [PersonalityType.THE_EXPLORER]: {
         tagline: 'Never stop discovering',
         description: 'A curious mind with insatiable appetite for learning. Supports projects that expand human knowledge.',
-        mainCategories: ['Education', 'Learning', 'Knowledge', 'Research'],
-        subCategories: ['Online Courses', 'EdTech', 'Books', 'Science'],
+        mainCategories: ['Education', 'AI Tools', 'Development'],
+        subCategories: ['Online Courses', 'EdTech', 'Research', 'Science'],
       },
       [PersonalityType.THE_CULTIVATOR]: {
         tagline: 'Growth starts within',
         description: 'A wellness advocate who believes in holistic growth. Champions mental, physical, and emotional health.',
-        mainCategories: ['Wellness', 'Mental Health', 'Fitness', 'Mindfulness'],
-        subCategories: ['Meditation', 'Yoga', 'Nutrition', 'Sleep'],
+        mainCategories: ['Wellness', 'Lifestyle', 'Education'],
+        subCategories: ['Meditation', 'Yoga', 'Nutrition', 'Sleep', 'Mindfulness'],
       },
       [PersonalityType.THE_OPTIMIZER]: {
         tagline: 'Always leveling up',
         description: 'An efficiency enthusiast who loves tools that maximize productivity. Always seeking to work smarter.',
-        mainCategories: ['Productivity', 'Tools', 'Efficiency', 'Automation'],
+        mainCategories: ['Productivity', 'Development', 'AI Tools'],
         subCategories: ['Task Management', 'Note-taking', 'Workflow', 'Time Tracking'],
       },
       [PersonalityType.THE_INNOVATOR]: {
         tagline: 'First to back new tech',
         description: 'A technology pioneer who jumps on cutting-edge AI tools. Funds the next generation of breakthroughs.',
-        mainCategories: ['AI Tools', 'Technology', 'Innovation', 'Machine Learning'],
+        mainCategories: ['AI Tools', 'Development', 'Design'],
         subCategories: ['AI Assistants', 'Content Creation', 'Code Tools', 'LLMs'],
       },
     };

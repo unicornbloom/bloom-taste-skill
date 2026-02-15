@@ -6,6 +6,7 @@
  */
 
 import type { IdentityData } from './bloom-identity-skill-v2';
+import { CATEGORY_GITHUB_TOPICS } from './types/categories';
 
 export interface GitHubRecommendation {
   skillId: string;
@@ -41,21 +42,8 @@ interface GitHubSearchResponse {
   total_count: number;
 }
 
-/**
- * Map Bloom categories to GitHub search topics
- */
-const CATEGORY_TO_TOPICS: Record<string, string[]> = {
-  'AI Tools': ['ai', 'artificial-intelligence', 'machine-learning', 'llm', 'chatgpt', 'gpt'],
-  'Productivity': ['productivity', 'automation', 'workflow', 'tools', 'utilities'],
-  'Automation': ['automation', 'workflow', 'bot', 'scripts', 'ci-cd'],
-  'Creative Tools': ['creative', 'design', 'art', 'music', 'video'],
-  'Developer Tools': ['developer-tools', 'devtools', 'cli', 'sdk', 'library'],
-  'Data & Analytics': ['data', 'analytics', 'visualization', 'database', 'sql'],
-  'Blockchain': ['blockchain', 'web3', 'crypto', 'ethereum', 'solana'],
-  'Consumer Apps': ['app', 'mobile', 'web-app', 'saas', 'platform'],
-  'Education': ['education', 'learning', 'tutorial', 'course', 'teaching'],
-  'Open Source': ['open-source', 'oss', 'community', 'contribution'],
-};
+// Use canonical category → GitHub topic mapping from shared source
+const CATEGORY_TO_TOPICS: Record<string, string[]> = CATEGORY_GITHUB_TOPICS;
 
 export class GitHubRecommendations {
   private apiToken?: string;
@@ -132,7 +120,10 @@ export class GitHubRecommendations {
     for (const topic of topTopics) {
       try {
         // Build search query: topic + stars + recent activity
-        const query = `topic:${topic} stars:>50 pushed:>2025-01-01`;
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const dateFilter = sixMonthsAgo.toISOString().split('T')[0];
+        const query = `topic:${topic} stars:>50 pushed:>${dateFilter}`;
         const url = `${this.baseUrl}/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=${Math.ceil(limit / topTopics.length)}`;
 
         const headers: Record<string, string> = {
@@ -173,10 +164,11 @@ export class GitHubRecommendations {
   }
 
   /**
-   * Score and rank repositories based on relevance
+   * Score and rank repositories based on relevance + personality signals
    */
   private scoreRepositories(repos: GitHubRepo[], identity: IdentityData): GitHubRecommendation[] {
     const recommendations: GitHubRecommendation[] = [];
+    const dims = identity.dimensions;
 
     for (const repo of repos) {
       let matchScore = 0;
@@ -203,6 +195,28 @@ export class GitHubRecommendations {
         const descLength = repo.description.length;
         const qualityScore = Math.min(descLength / 10, 15);
         matchScore += qualityScore;
+      }
+
+      // 5. Dimension-aware personality bonuses (0-10 points)
+      if (dims) {
+        // Optimizer (low intuition): boost well-established repos with high stars
+        if (dims.intuition < 35 && repo.stargazers_count > 5000) {
+          matchScore += 6;
+        }
+        // Visionary (high intuition): boost newer/less-known repos
+        if (dims.intuition > 65 && repo.stargazers_count < 500) {
+          matchScore += 6;
+        }
+        // High contribution: boost repos with community topics
+        if (dims.contribution > 55) {
+          const communityTopics = ['community', 'open-source', 'oss', 'contribution', 'governance'];
+          const hasCommunity = repo.topics.some(t => communityTopics.includes(t));
+          if (hasCommunity) matchScore += 6;
+        }
+        // High conviction: boost repos matching exact user categories
+        if (dims.conviction > 65 && topicMatches >= 2) {
+          matchScore += 5;
+        }
       }
 
       // Normalize to 0-100
