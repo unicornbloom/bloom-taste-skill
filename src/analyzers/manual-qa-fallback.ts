@@ -19,7 +19,7 @@ export interface ManualQAResult {
   mainCategories: string[];
   subCategories: string[];
   confidence: number;
-  tasteSpectrums?: { learning: number; energy: number; growth: number };
+  tasteSpectrums?: { learning: number; decision: number; novelty: number; risk: number };
 }
 
 /**
@@ -74,10 +74,10 @@ export const MANUAL_QUESTIONS = [
     id: 'learning_style',
     question: 'How do you usually learn something new?',
     options: [
-      { value: 'Jump in and try it — I learn by doing', personality: PersonalityType.THE_INNOVATOR, weight: 3, taste: { learning: 20 } },
-      { value: 'Read docs, watch tutorials, then try', personality: PersonalityType.THE_EXPLORER, weight: 3, taste: { learning: 80 } },
-      { value: 'Find a community or mentor to guide me', personality: PersonalityType.THE_CULTIVATOR, weight: 3, taste: { energy: 80 } },
-      { value: 'Set a goal, then figure out the fastest path', personality: PersonalityType.THE_OPTIMIZER, weight: 3, taste: { growth: 80 } },
+      { value: 'Jump in and try it — I learn by doing', personality: PersonalityType.THE_INNOVATOR, weight: 3, taste: { learning: 20, decision: 30 } },
+      { value: 'Read docs, watch tutorials, then try', personality: PersonalityType.THE_EXPLORER, weight: 3, taste: { learning: 80, decision: 70 } },
+      { value: 'Find a community or mentor to guide me', personality: PersonalityType.THE_CULTIVATOR, weight: 3, taste: { novelty: 60, risk: 70 } },
+      { value: 'Set a goal, then figure out the fastest path', personality: PersonalityType.THE_OPTIMIZER, weight: 3, taste: { decision: 40, risk: 30 } },
     ],
   },
 ];
@@ -99,7 +99,7 @@ export class ManualQAFallback {
     };
 
     // Extract taste spectrum from Q5 learning_style answer
-    let tasteSpectrums = { learning: 50, energy: 50, growth: 50 };
+    let tasteSpectrums = { learning: 50, decision: 50, novelty: 50, risk: 50 };
 
     // Calculate scores based on answers
     for (const answer of answers) {
@@ -115,8 +115,9 @@ export class ManualQAFallback {
       if ((option as any).taste) {
         const taste = (option as any).taste as Record<string, number>;
         if (taste.learning !== undefined) tasteSpectrums.learning = taste.learning;
-        if (taste.energy !== undefined) tasteSpectrums.energy = taste.energy;
-        if (taste.growth !== undefined) tasteSpectrums.growth = taste.growth;
+        if (taste.decision !== undefined) tasteSpectrums.decision = taste.decision;
+        if (taste.novelty !== undefined) tasteSpectrums.novelty = taste.novelty;
+        if (taste.risk !== undefined) tasteSpectrums.risk = taste.risk;
       }
     }
 
@@ -136,7 +137,7 @@ export class ManualQAFallback {
     result.tasteSpectrums = tasteSpectrums;
 
     console.log(`✅ Determined personality: ${dominantType} (confidence: ${result.confidence}%)`);
-    console.log(`📊 Taste Spectrums (Q&A): Learning=${tasteSpectrums.learning}, Energy=${tasteSpectrums.energy}, Growth=${tasteSpectrums.growth}`);
+    console.log(`📊 Taste Spectrums (Q&A): Learning=${tasteSpectrums.learning}, Decision=${tasteSpectrums.decision}, Novelty=${tasteSpectrums.novelty}, Risk=${tasteSpectrums.risk}`);
 
     return result;
   }

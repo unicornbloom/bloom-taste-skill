@@ -11,11 +11,15 @@ import {
   TasteSpectrums,
   LEARNING_TRY_FIRST_KEYWORDS,
   LEARNING_STUDY_FIRST_KEYWORDS,
-  ENERGY_SOLO_KEYWORDS,
-  ENERGY_SOCIAL_KEYWORDS,
-  GROWTH_CURIOSITY_KEYWORDS,
-  GROWTH_GOAL_KEYWORDS,
+  DECISION_GUT_KEYWORDS,
+  DECISION_DELIBERATE_KEYWORDS,
+  NOVELTY_EARLY_KEYWORDS,
+  NOVELTY_WAIT_KEYWORDS,
+  RISK_BOLD_KEYWORDS,
+  RISK_CAUTIOUS_KEYWORDS,
   STRENGTH_PATTERNS,
+  EPISODE_PATTERNS,
+  EpisodePattern,
 } from '../types/taste-dimensions';
 
 export interface UserData {
@@ -42,6 +46,7 @@ export interface UserData {
     preferences: string[];
     history: string[];
   };
+  userMdContent?: string; // Raw USER.md text for keyword + episodic extraction
 }
 
 export interface DimensionScores {
@@ -89,8 +94,9 @@ export class PersonalityAnalyzer {
       intuition: number;
       contribution: number;
       learning?: number;
-      energy?: number;
-      growth?: number;
+      decision?: number;
+      novelty?: number;
+      risk?: number;
     },
   ): Promise<PersonalityAnalysis> {
     console.log('🤖 Analyzing user data for 2-axis personality classification...');
@@ -115,17 +121,20 @@ export class PersonalityAnalyzer {
       if (nudges.learning !== undefined) {
         dimensions.tasteSpectrums.learning = Math.min(Math.max(dimensions.tasteSpectrums.learning + nudges.learning, 0), 100);
       }
-      if (nudges.energy !== undefined) {
-        dimensions.tasteSpectrums.energy = Math.min(Math.max(dimensions.tasteSpectrums.energy + nudges.energy, 0), 100);
+      if (nudges.decision !== undefined) {
+        dimensions.tasteSpectrums.decision = Math.min(Math.max(dimensions.tasteSpectrums.decision + nudges.decision, 0), 100);
       }
-      if (nudges.growth !== undefined) {
-        dimensions.tasteSpectrums.growth = Math.min(Math.max(dimensions.tasteSpectrums.growth + nudges.growth, 0), 100);
+      if (nudges.novelty !== undefined) {
+        dimensions.tasteSpectrums.novelty = Math.min(Math.max(dimensions.tasteSpectrums.novelty + nudges.novelty, 0), 100);
+      }
+      if (nudges.risk !== undefined) {
+        dimensions.tasteSpectrums.risk = Math.min(Math.max(dimensions.tasteSpectrums.risk + nudges.risk, 0), 100);
       }
 
       console.log(`📊 Nudges applied: conviction ${nudges.conviction >= 0 ? '+' : ''}${nudges.conviction}, intuition ${nudges.intuition >= 0 ? '+' : ''}${nudges.intuition}, contribution ${nudges.contribution >= 0 ? '+' : ''}${nudges.contribution}`);
     }
     console.log(`📊 Dimensions: Conviction=${dimensions.conviction}, Intuition=${dimensions.intuition}, Contribution=${dimensions.contribution}`);
-    console.log(`📊 Taste Spectrums: Learning=${tasteSpectrums.learning}, Energy=${tasteSpectrums.energy}, Growth=${tasteSpectrums.growth}`);
+    console.log(`📊 Taste Spectrums: Learning=${tasteSpectrums.learning}, Decision=${tasteSpectrums.decision}, Novelty=${tasteSpectrums.novelty}, Risk=${tasteSpectrums.risk}`);
     if (strengths.length > 0) {
       console.log(`💪 Detected strengths: ${strengths.join(', ')}`);
     }
@@ -454,35 +463,75 @@ export class PersonalityAnalyzer {
   }
 
   /**
+   * Extract episodic memory signals from user text.
+   *
+   * Looks for narrative sentences ("I switched from X to Y", "we built X together")
+   * that reveal decisions, pivots, and experiences — much stronger signals than
+   * individual keyword hits.
+   *
+   * Returns aggregated spectrum adjustments from all matched episodes.
+   */
+  private extractEpisodes(allText: string): { learning: number; decision: number; novelty: number; risk: number; count: number } {
+    const totals = { learning: 0, decision: 0, novelty: 0, risk: 0, count: 0 };
+
+    for (const ep of EPISODE_PATTERNS) {
+      // Use global regex to count multiple matches
+      const globalPattern = new RegExp(ep.pattern.source, ep.pattern.flags.includes('g') ? ep.pattern.flags : ep.pattern.flags + 'g');
+      const matches = allText.match(globalPattern);
+      if (matches) {
+        const hitCount = matches.length;
+        totals.count += hitCount;
+        if (ep.signals.learning !== undefined) totals.learning += ep.signals.learning * hitCount;
+        if (ep.signals.decision !== undefined) totals.decision += ep.signals.decision * hitCount;
+        if (ep.signals.novelty !== undefined) totals.novelty += ep.signals.novelty * hitCount;
+        if (ep.signals.risk !== undefined) totals.risk += ep.signals.risk * hitCount;
+      }
+    }
+
+    return totals;
+  }
+
+  /**
    * Calculate taste spectrum scores (0-100 each)
-   * Same keyword-counting pattern as calculateConviction()
+   *
+   * Two signal layers:
+   *   1. Keywords (shallow): vocabulary matching, ±5 per net keyword hit
+   *   2. Episodes (deep):    narrative pattern matching, ±8 per weighted episode
+   *
+   * Episodes carry more weight because they represent actual behaviors/decisions,
+   * not just vocabulary preferences.
    */
   private calculateTasteSpectrums(userData: UserData): TasteSpectrums {
     const allText = this.extractAllText(userData).toLowerCase();
 
-    // Learning: try-first (0) <-> study-first (100)
-    let learning = 50;
+    // Layer 1: Keyword scoring (±5 per net hit)
     const tryHits = LEARNING_TRY_FIRST_KEYWORDS.filter(k => allText.includes(k)).length;
     const studyHits = LEARNING_STUDY_FIRST_KEYWORDS.filter(k => allText.includes(k)).length;
-    learning += (studyHits - tryHits) * 5;
+    const gutHits = DECISION_GUT_KEYWORDS.filter(k => allText.includes(k)).length;
+    const deliberateHits = DECISION_DELIBERATE_KEYWORDS.filter(k => allText.includes(k)).length;
+    const earlyHits = NOVELTY_EARLY_KEYWORDS.filter(k => allText.includes(k)).length;
+    const waitHits = NOVELTY_WAIT_KEYWORDS.filter(k => allText.includes(k)).length;
+    const boldHits = RISK_BOLD_KEYWORDS.filter(k => allText.includes(k)).length;
+    const cautiousHits = RISK_CAUTIOUS_KEYWORDS.filter(k => allText.includes(k)).length;
 
-    // Energy: solo (0) <-> social (100)
-    let energy = 50;
-    const soloHits = ENERGY_SOLO_KEYWORDS.filter(k => allText.includes(k)).length;
-    const socialHits = ENERGY_SOCIAL_KEYWORDS.filter(k => allText.includes(k)).length;
-    energy += (socialHits - soloHits) * 5;
+    let learning = 50 + (studyHits - tryHits) * 5;
+    let decision = 50 + (deliberateHits - gutHits) * 5;
+    let novelty = 50 + (waitHits - earlyHits) * 5;
+    let risk = 50 + (cautiousHits - boldHits) * 5;
 
-    // Growth: curiosity-driven (0) <-> goal-driven (100)
-    let growth = 50;
-    const curiosityHits = GROWTH_CURIOSITY_KEYWORDS.filter(k => allText.includes(k)).length;
-    const goalHits = GROWTH_GOAL_KEYWORDS.filter(k => allText.includes(k)).length;
-    growth += (goalHits - curiosityHits) * 5;
+    // Layer 2: Episodic memory scoring (±8 per weighted signal)
+    const episodes = this.extractEpisodes(allText);
+    if (episodes.count > 0) {
+      const EPISODE_WEIGHT = 8;
+      learning += episodes.learning * EPISODE_WEIGHT;
+      decision += episodes.decision * EPISODE_WEIGHT;
+      novelty += episodes.novelty * EPISODE_WEIGHT;
+      risk += episodes.risk * EPISODE_WEIGHT;
+      console.log(`🧠 Episodic signals: ${episodes.count} episodes found (L:${episodes.learning.toFixed(1)} D:${episodes.decision.toFixed(1)} N:${episodes.novelty.toFixed(1)} R:${episodes.risk.toFixed(1)})`);
+    }
 
-    return {
-      learning: Math.min(Math.max(Math.round(learning), 0), 100),
-      energy: Math.min(Math.max(Math.round(energy), 0), 100),
-      growth: Math.min(Math.max(Math.round(growth), 0), 100),
-    };
+    const clamp = (v: number) => Math.min(Math.max(Math.round(v), 0), 100);
+    return { learning: clamp(learning), decision: clamp(decision), novelty: clamp(novelty), risk: clamp(risk) };
   }
 
   /**
@@ -512,7 +561,7 @@ export class PersonalityAnalyzer {
     categories: string[],
     dimensions: DimensionScores,
   ): string {
-    const spectrums = dimensions.tasteSpectrums || { learning: 50, energy: 50, growth: 50 };
+    const spectrums = dimensions.tasteSpectrums || { learning: 50, decision: 50, novelty: 50, risk: 50 };
     const topCategory = categories[0] || 'Tech';
 
     // Sentence 1: Personality type opener
@@ -524,36 +573,44 @@ export class PersonalityAnalyzer {
       [PersonalityType.THE_INNOVATOR]: `First to back breakthrough technology, you spot the future before it arrives.`,
     };
 
-    // Sentence 2: Learning spectrum
+    // Sentence 2: Learning + Decision combined
     let learningSentence: string;
-    if (spectrums.learning > 65) {
+    if (spectrums.learning > 65 && spectrums.decision > 65) {
+      learningSentence = 'You study deeply and decide carefully — nothing escapes your analysis.';
+    } else if (spectrums.learning < 35 && spectrums.decision < 35) {
+      learningSentence = 'You trust your instincts and learn by doing — ship first, refine later.';
+    } else if (spectrums.learning > 65) {
       learningSentence = 'You prefer understanding deeply before acting — research is your foundation.';
     } else if (spectrums.learning < 35) {
       learningSentence = 'You learn by doing — prototyping and shipping are how you understand the world.';
+    } else if (spectrums.decision > 65) {
+      learningSentence = 'You weigh every option before committing — deliberate and data-driven.';
+    } else if (spectrums.decision < 35) {
+      learningSentence = 'You go with your gut — fast instincts guide your decisions.';
     } else {
       learningSentence = 'You balance theory and practice, knowing when to study and when to ship.';
     }
 
-    // Sentence 3: Energy + Growth combined
+    // Sentence 3: Novelty + Risk combined
     let closingSentence: string;
-    if (spectrums.energy > 65 && spectrums.growth > 65) {
-      closingSentence = 'A social achiever, you thrive in teams pursuing ambitious goals.';
-    } else if (spectrums.energy > 65 && spectrums.growth < 35) {
-      closingSentence = 'You draw energy from community and let curiosity guide where it leads.';
-    } else if (spectrums.energy < 35 && spectrums.growth > 65) {
-      closingSentence = 'A focused individual, you set clear targets and quietly deliver results.';
-    } else if (spectrums.energy < 35 && spectrums.growth < 35) {
-      closingSentence = 'Independent and curiosity-driven, you explore at your own pace.';
-    } else if (spectrums.energy > 65) {
-      closingSentence = 'Collaboration energizes you — the best ideas emerge from conversation.';
-    } else if (spectrums.energy < 35) {
-      closingSentence = 'You do your best work in focused, independent sessions.';
-    } else if (spectrums.growth > 65) {
-      closingSentence = 'Goal-oriented by nature, you measure progress in milestones shipped.';
-    } else if (spectrums.growth < 35) {
-      closingSentence = 'Curiosity is your compass — you follow what fascinates you.';
+    if (spectrums.novelty < 35 && spectrums.risk < 35) {
+      closingSentence = 'A fearless early adopter, you jump on the bleeding edge before anyone else.';
+    } else if (spectrums.novelty > 65 && spectrums.risk > 65) {
+      closingSentence = 'Patient and prudent, you prefer proven paths with a track record of success.';
+    } else if (spectrums.novelty < 35 && spectrums.risk > 65) {
+      closingSentence = 'You spot new trends early but approach them with measured caution.';
+    } else if (spectrums.novelty > 65 && spectrums.risk < 35) {
+      closingSentence = 'You prefer established tools but aren\'t afraid to bet big when it counts.';
+    } else if (spectrums.novelty < 35) {
+      closingSentence = 'An early adopter at heart — you want to try it before the crowd.';
+    } else if (spectrums.novelty > 65) {
+      closingSentence = 'You let others test the waters first, then commit with confidence.';
+    } else if (spectrums.risk < 35) {
+      closingSentence = 'Bold by nature, you\'re willing to take calculated risks for outsized rewards.';
+    } else if (spectrums.risk > 65) {
+      closingSentence = 'Careful and steady — you protect your downside before chasing upside.';
     } else {
-      closingSentence = 'Versatile and adaptive, you shift between exploration and execution as the moment demands.';
+      closingSentence = 'Versatile and adaptive, you shift between exploration and caution as the moment demands.';
     }
 
     return `${typeOpeners[type] || typeOpeners[PersonalityType.THE_INNOVATOR]} ${learningSentence} ${closingSentence}`;
@@ -582,6 +639,11 @@ export class PersonalityAnalyzer {
       textParts.push(...userData.conversationMemory.interests);
       textParts.push(...userData.conversationMemory.preferences);
       textParts.push(...userData.conversationMemory.history);
+    }
+
+    // USER.md raw text — first-class signal source
+    if (userData.userMdContent) {
+      textParts.push(userData.userMdContent);
     }
 
     return textParts.join(' ');

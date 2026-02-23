@@ -29,8 +29,9 @@ export interface RefreshIdentityInput {
   };
   tasteSpectrums?: {
     learning: number;
-    energy: number;
-    growth: number;
+    decision: number;
+    novelty: number;
+    risk: number;
   };
   feedback?: {
     categoryWeights?: Record<string, number>;
@@ -552,31 +553,43 @@ function calculatePersonalityBoost(
         tasteBoost += 6;
       }
     }
-    // Energy: solo (< 40) → solo tools, single-player productivity
-    if (taste.energy < 40) {
-      if (/\b(solo|personal|individual|private|local|offline|single)\b/i.test(searchText)) {
+    // Decision: gut (< 40) → tools, templates, quick-start
+    if (taste.decision < 40) {
+      if (/\b(tool|template|quick[- ]?start|scaffold|instant|rapid)\b/i.test(searchText)) {
+        tasteBoost += 5;
+      }
+    }
+    // Decision: deliberate (> 60) → docs, guides, comparisons
+    if (taste.decision > 60) {
+      if (/\b(documentation|docs|guide|comparison|benchmark|evaluat|review)\b/i.test(searchText)) {
+        tasteBoost += 5;
+      }
+    }
+    // Novelty: early-adopter (< 40) → beta, new, cutting-edge
+    if (taste.novelty < 40) {
+      if (/\b(beta|new|cutting[- ]?edge|alpha|experimental|preview|early[- ]?access)\b/i.test(searchText)) {
+        tasteBoost += 5;
+      }
+    }
+    // Novelty: wait-and-see (> 60) → established, proven, mature
+    if (taste.novelty > 60) {
+      if (/\b(established|proven|mature|stable|reliable|battle[- ]?tested|mainstream)\b/i.test(searchText)) {
+        tasteBoost += 5;
+      }
+    }
+    // Risk: bold (< 40) → high-risk, moonshot, experimental
+    if (taste.risk < 40) {
+      if (/\b(moonshot|experimental|high[- ]?risk|ambitious|disrupt|breakthrough|radical)\b/i.test(searchText)) {
         tasteBoost += 4;
       }
     }
-    // Energy: social (> 60) → community platforms, collaborative tools
-    if (taste.energy > 60) {
-      if (/\b(community|collaborat|team|social|shared|multiplayer|real-?time)\b/i.test(searchText)) {
+    // Risk: cautious (> 60) → stable, established, safe
+    if (taste.risk > 60) {
+      if (/\b(stable|established|safe|reliable|secure|conservative|trusted)\b/i.test(searchText)) {
         tasteBoost += 4;
       }
     }
-    // Growth: curiosity-driven (< 40) → exploratory, experimental, research
-    if (taste.growth < 40) {
-      if (/\b(explor|experiment|research|sandbox|playground|creative)\b/i.test(searchText)) {
-        tasteBoost += 4;
-      }
-    }
-    // Growth: goal-driven (> 60) → productivity, shipping, ROI-focused
-    if (taste.growth > 60) {
-      if (/\b(productiv|ship|deploy|roi|analytics|metrics|performance|automat)\b/i.test(searchText)) {
-        tasteBoost += 4;
-      }
-    }
-    tasteBoost = Math.min(tasteBoost, 12);
+    tasteBoost = Math.min(tasteBoost, 15);
   }
 
   return { boost: keywordBoost + dimensionBoost + tasteBoost, matchedKeywords };

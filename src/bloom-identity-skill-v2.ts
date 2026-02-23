@@ -40,8 +40,9 @@ export interface IdentityData {
   };
   tasteSpectrums?: {
     learning: number;
-    energy: number;
-    growth: number;
+    decision: number;
+    novelty: number;
+    risk: number;
   };
   strengths?: string[];
 }
@@ -234,6 +235,11 @@ export class BloomIdentitySkillV2 {
                   options?.feedback ?? null,
                 )
               : null;
+
+            // Inject USER.md raw text as first-class signal source
+            if (userMdSignals?.raw) {
+              userData.userMdContent = Object.values(userMdSignals.raw).join('\n');
+            }
 
             // Analyze personality from data (with optional dimension nudges)
             const analysis = await this.personalityAnalyzer.analyze(
@@ -543,8 +549,9 @@ export class BloomIdentitySkillV2 {
     if (identity.tasteSpectrums) {
       metadata.attributes.push(
         { trait_type: 'Learning Style', value: identity.tasteSpectrums.learning, display_type: 'number' },
-        { trait_type: 'Energy Style', value: identity.tasteSpectrums.energy, display_type: 'number' },
-        { trait_type: 'Growth Style', value: identity.tasteSpectrums.growth, display_type: 'number' },
+        { trait_type: 'Decision Style', value: identity.tasteSpectrums.decision, display_type: 'number' },
+        { trait_type: 'Novelty Style', value: identity.tasteSpectrums.novelty, display_type: 'number' },
+        { trait_type: 'Risk Style', value: identity.tasteSpectrums.risk, display_type: 'number' },
       );
     }
 
