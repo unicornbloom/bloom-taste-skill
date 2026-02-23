@@ -97,7 +97,7 @@ async function main() {
 }
 
 function formatResult(result: any): void {
-  const { identityData, agentWallet, recommendations, mode, dimensions, dashboardUrl } = result;
+  const { identityData, agentWallet, recommendations, discoveries, mode, dimensions, dashboardUrl } = result;
 
   const modeEmoji = mode === 'manual' ? '📝' : '🤖';
 
@@ -118,6 +118,14 @@ function formatResult(result: any): void {
   console.log(`${getPersonalityEmoji(identityData.personalityType)} ${identityData.personalityType}`);
   console.log(`💬 "${identityData.customTagline}"\n`);
   console.log(`📝 ${identityData.customDescription}\n`);
+
+  // Hidden Pattern Insight
+  if (identityData.hiddenInsight) {
+    console.log('🔍 Hidden Pattern:');
+    console.log(`   💡 ${identityData.hiddenInsight.brief}`);
+    console.log(`   ${identityData.hiddenInsight.narrative}`);
+    console.log('');
+  }
 
   // Categories (real data)
   console.log(`🏷️  Categories: ${identityData.mainCategories.join(', ')}`);
@@ -141,6 +149,15 @@ function formatResult(result: any): void {
     console.log('');
   }
 
+  // AI-Era Playbook
+  if (identityData.aiPlaybook) {
+    console.log('🧭 AI-Era Playbook:');
+    console.log(`   💪 Leverage: ${identityData.aiPlaybook.leverage}`);
+    console.log(`   ⚠️  Watch out: ${identityData.aiPlaybook.watchOut}`);
+    console.log(`   🎯 Next move: ${identityData.aiPlaybook.nextMove}`);
+    console.log('');
+  }
+
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   // Skills (diverse recommendations from all sources)
@@ -156,6 +173,18 @@ function formatResult(result: any): void {
   });
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  // New for You discoveries
+  if (discoveries?.length > 0) {
+    console.log('🆕 New for You:\n');
+    for (const d of discoveries.slice(0, 5)) {
+      const score = d.matchScore != null ? ` (${d.matchScore}% match)` : '';
+      const source = d.source || 'Unknown';
+      console.log(`   ${d.name}${score} · ${source}`);
+      if (d.url) console.log(`   → ${d.url}`);
+    }
+    console.log('');
+  }
 
   // Wallet info with marketing message
   console.log('🤖 Your Agent Wallet Created\n');

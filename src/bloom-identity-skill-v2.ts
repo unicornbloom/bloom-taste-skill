@@ -18,8 +18,9 @@ import { mintIdentitySbt } from './blockchain/identity-sbt';
 import { captureAndUploadCardImage } from './blockchain/card-image';
 import { TwitterShare, createTwitterShare } from './integrations/twitter-share';
 import { PersonalityType } from './types/personality';
+import { HiddenPatternInsight, AiPlaybook } from './types/taste-dimensions';
 import { refreshRecommendations, SkillRecommendation } from './recommendation-pipeline';
-import { syncDiscoveries } from './discovery-sync';
+import { syncDiscoveries, DiscoveryEntry } from './discovery-sync';
 import { parseUserMd, UserMdSignals } from './parsers/user-md-parser';
 import { mergeSignals, MergedSignals, FeedbackData } from './analyzers/signal-merger';
 
@@ -45,6 +46,8 @@ export interface IdentityData {
     risk: number;
   };
   strengths?: string[];
+  hiddenInsight?: HiddenPatternInsight;
+  aiPlaybook?: AiPlaybook;
 }
 
 /**
@@ -130,6 +133,7 @@ export class BloomIdentitySkillV2 {
     identityData?: IdentityData;
     agentWallet?: AgentWalletInfo;
     recommendations?: SkillRecommendation[];
+    discoveries?: DiscoveryEntry[];
     dashboardUrl?: string;
     shareUrl?: string;
     dataQuality?: number;
@@ -271,6 +275,8 @@ export class BloomIdentitySkillV2 {
               dimensions: analysis.dimensions,
               tasteSpectrums: analysis.dimensions.tasteSpectrums,
               strengths: analysis.strengths,
+              hiddenInsight: analysis.hiddenInsight,
+              aiPlaybook: analysis.aiPlaybook,
             };
 
             // ⭐ Capture 2x2 metrics
@@ -363,6 +369,8 @@ export class BloomIdentitySkillV2 {
         dimensions,
         tasteSpectrums: identityData!.tasteSpectrums,
         strengths: identityData!.strengths,
+        hiddenInsight: identityData!.hiddenInsight,
+        aiPlaybook: identityData!.aiPlaybook,
         recommendations,
       };
 
@@ -398,11 +406,22 @@ export class BloomIdentitySkillV2 {
         console.log(`✅ Using pre-registered agentUserId: ${agentUserId}`);
       }
 
+      // Sync discoveries (awaited to surface "New for You" in output)
+      let discoveries: DiscoveryEntry[] = [];
+
       if (agentUserId) {
-        // Seed discoveries file (fire-and-forget)
-        syncDiscoveries(agentUserId).catch(err => {
-          console.debug('[discovery-sync] fire-and-forget failed:', err instanceof Error ? err.message : err);
-        });
+        try {
+          // Race against a 3s timeout so slow API doesn't block output
+          const syncResult = await Promise.race([
+            syncDiscoveries(agentUserId),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('timeout')), 3000),
+            ),
+          ]);
+          discoveries = syncResult.newEntries;
+        } catch (err) {
+          console.debug('[discovery-sync] failed:', err instanceof Error ? err.message : err);
+        }
 
         const baseUrl = process.env.DASHBOARD_URL || 'https://bloomprotocol.ai';
         dashboardUrl = `${baseUrl}/agents/${agentUserId}`;
@@ -486,6 +505,7 @@ export class BloomIdentitySkillV2 {
         identityData: identityData!,
         agentWallet,
         recommendations,
+        discoveries,
         dashboardUrl,
         shareUrl,
         dataQuality,
@@ -562,6 +582,11 @@ export class BloomIdentitySkillV2 {
       }
     }
 
+    // Add hidden pattern insight
+    if (identity.hiddenInsight) {
+      metadata.attributes.push({ trait_type: 'Hidden Pattern', value: identity.hiddenInsight.brief });
+    }
+
     const json = JSON.stringify(metadata);
     const base64 = Buffer.from(json).toString('base64');
     return `data:application/json;base64,${base64}`;
@@ -597,7 +622,7 @@ export class BloomIdentitySkillV2 {
 export const bloomIdentitySkillV2 = {
   name: 'bloom-identity',
   description: 'Generate your personalized Bloom Identity Card and discover matching projects',
-  version: '2.0.0',
+  version: '2.1.0',
 
   triggers: [
     'generate my bloom identity',
@@ -657,8 +682,13 @@ function formatSuccessMessage(result: any): string {
   const { identityData, recommendations } = result;
 
   let msg = `${getPersonalityEmoji(identityData.personalityType)} **${identityData.personalityType}**
-"${identityData.customTagline}"
-**Categories**: ${identityData.mainCategories.join(' • ')}`;
+"${identityData.customTagline}"`;
+
+  if (identityData.hiddenInsight) {
+    msg += `\n🔍 *${identityData.hiddenInsight.brief}*`;
+  }
+
+  msg += `\n**Categories**: ${identityData.mainCategories.join(' • ')}`;
 
   // SBT mint data is in result.actions.mint but not shown to users (web3-native only on dashboard)
   if (recommendations?.length > 0 && result.dashboardUrl) {

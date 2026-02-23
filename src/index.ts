@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name('bloom-identity')
   .description('Generate Bloom Identity Card from Twitter/X and on-chain data')
-  .version('2.0.0')
+  .version('2.1.0')
   .requiredOption('--user-id <userId>', 'OpenClaw user ID')
   .option('--mode <mode>', 'Execution mode: auto, manual, or hybrid', 'auto')
   .option('--skip-share', 'Skip Twitter share link generation', false)
@@ -54,12 +54,15 @@ async function main() {
 }
 
 function formatResult(result: any): void {
-  const { identityData, recommendations, dashboardUrl, actions } = result;
+  const { identityData, recommendations, discoveries, dashboardUrl, actions } = result;
 
   console.log('');
   console.log(`${getPersonalityEmoji(identityData.personalityType)} You're ${identityData.personalityType}`);
   console.log(`"${identityData.customTagline}"`);
   console.log(`Categories: ${identityData.mainCategories.join(' \u2022 ')}`);
+  if (identityData.hiddenInsight) {
+    console.log(`🔍 ${identityData.hiddenInsight.brief}`);
+  }
   console.log('');
 
   const mintedOnBase = actions?.mint?.txHash;
@@ -70,6 +73,18 @@ function formatResult(result: any): void {
   } else if (dashboardUrl) {
     console.log(`\u2728 Your Taste Card is ready${mintedOnBase ? ' \u2014 minted on Base' : ''}`);
     console.log(`\u2192 See your card: ${dashboardUrl}`);
+  }
+
+  // Show "New for You" discoveries on re-runs
+  if (discoveries?.length > 0) {
+    console.log('');
+    console.log('\uD83C\uDD95 New for You:');
+    for (const d of discoveries.slice(0, 5)) {
+      const score = d.matchScore != null ? `${d.matchScore}%` : '';
+      const source = d.source || 'Unknown';
+      console.log(`   ${d.name}${score ? ` (${score} match)` : ''} \u00B7 ${source}`);
+      if (d.url) console.log(`   \u2192 ${d.url}`);
+    }
   }
 
   console.log('');

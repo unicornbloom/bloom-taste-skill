@@ -154,7 +154,7 @@ async function main() {
 }
 
 function formatResult(result: any): void {
-  const { identityData, agentWallet, recommendations, mode, dimensions, dashboardUrl } = result;
+  const { identityData, agentWallet, recommendations, discoveries, mode, dimensions, dashboardUrl } = result;
 
   // Clean Markdown format that OpenClaw won't reformat
   console.log('\n---\n');
@@ -169,6 +169,13 @@ function formatResult(result: any): void {
   console.log(`## ${getPersonalityEmoji(identityData.personalityType)} ${identityData.personalityType}\n`);
   console.log(`> *"${identityData.customTagline}"*\n`);
   console.log(`${identityData.customDescription}\n`);
+
+  // Hidden Pattern Insight
+  if (identityData.hiddenInsight) {
+    console.log(`## 🔍 Hidden Pattern\n`);
+    console.log(`> 💡 *${identityData.hiddenInsight.brief}*\n`);
+    console.log(`${identityData.hiddenInsight.narrative}\n`);
+  }
 
   // Categories (real data)
   console.log(`**Categories**: ${identityData.mainCategories.join(' · ')}`);
@@ -190,6 +197,14 @@ function formatResult(result: any): void {
       console.log(`- **Contribution**: ${dimensions.contribution}/100`);
     }
     console.log('');
+  }
+
+  // AI-Era Playbook (dashboard expanded content)
+  if (identityData.aiPlaybook) {
+    console.log('## 🧭 AI-Era Playbook\n');
+    console.log(`**Leverage**: ${identityData.aiPlaybook.leverage}\n`);
+    console.log(`**Watch out**: ${identityData.aiPlaybook.watchOut}\n`);
+    console.log(`**Next move**: ${identityData.aiPlaybook.nextMove}\n`);
   }
 
   // Skills (real recommendations from ClawHub + GitHub)
@@ -225,6 +240,18 @@ function formatResult(result: any): void {
   } else {
     console.log('## 🎯 Recommended Tools\n');
     console.log('*No matching tools found at this time*\n');
+  }
+
+  // New for You discoveries
+  if (discoveries?.length > 0) {
+    console.log('## 🆕 New for You\n');
+    for (const d of discoveries.slice(0, 5)) {
+      const score = d.matchScore != null ? ` (${d.matchScore}% match)` : '';
+      const source = d.source || 'Unknown';
+      console.log(`- **${d.name}**${score} · ${source}`);
+      if (d.url) console.log(`  → ${d.url}`);
+    }
+    console.log('');
   }
 
   // Wallet info with marketing message

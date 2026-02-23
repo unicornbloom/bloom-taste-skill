@@ -20,6 +20,18 @@ export interface DetectedStrengths {
   confidence: number; // 0-100
 }
 
+export interface HiddenPatternInsight {
+  brief: string;        // 1-liner for card ("You talk like a planner but act like a builder")
+  narrative: string;    // 2-3 sentences for dashboard page
+  patternType: string;  // machine-readable: 'layer-mismatch' | 'boundary-dweller' | 'strength-synergy' | 'episode-dominance' | 'spectrum-extreme' | 'stealth-contributor'
+}
+
+export interface AiPlaybook {
+  leverage: string;     // What your style gives you as an advantage
+  watchOut: string;     // What to be careful about
+  nextMove: string;     // Actionable next step
+}
+
 // ─── Keyword sets for spectrum detection ─────────────────────────────────
 
 export const LEARNING_TRY_FIRST_KEYWORDS = [
