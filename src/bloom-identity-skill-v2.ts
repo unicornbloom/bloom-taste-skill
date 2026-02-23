@@ -38,6 +38,12 @@ export interface IdentityData {
     intuition: number;
     contribution: number;
   };
+  tasteSpectrums?: {
+    learning: number;
+    energy: number;
+    growth: number;
+  };
+  strengths?: string[];
 }
 
 /**
@@ -257,6 +263,8 @@ export class BloomIdentitySkillV2 {
                 s => !analysis.detectedInterests.includes(s),
               )],
               dimensions: analysis.dimensions,
+              tasteSpectrums: analysis.dimensions.tasteSpectrums,
+              strengths: analysis.strengths,
             };
 
             // ⭐ Capture 2x2 metrics
@@ -308,6 +316,7 @@ export class BloomIdentitySkillV2 {
           customDescription: manualResult.description,
           mainCategories: manualResult.mainCategories,
           subCategories: manualResult.subCategories,
+          tasteSpectrums: manualResult.tasteSpectrums,
         };
 
         dataQuality = manualResult.confidence;
@@ -346,6 +355,8 @@ export class BloomIdentitySkillV2 {
         confidence: dataQuality,
         mode: (usedManualQA ? 'manual' : 'data') as 'data' | 'manual',
         dimensions,
+        tasteSpectrums: identityData!.tasteSpectrums,
+        strengths: identityData!.strengths,
         recommendations,
       };
 
@@ -528,6 +539,22 @@ export class BloomIdentitySkillV2 {
       );
     }
 
+    // Add taste spectrum scores
+    if (identity.tasteSpectrums) {
+      metadata.attributes.push(
+        { trait_type: 'Learning Style', value: identity.tasteSpectrums.learning, display_type: 'number' },
+        { trait_type: 'Energy Style', value: identity.tasteSpectrums.energy, display_type: 'number' },
+        { trait_type: 'Growth Style', value: identity.tasteSpectrums.growth, display_type: 'number' },
+      );
+    }
+
+    // Add strengths
+    if (identity.strengths?.length) {
+      for (const strength of identity.strengths) {
+        metadata.attributes.push({ trait_type: 'Strength', value: strength });
+      }
+    }
+
     const json = JSON.stringify(metadata);
     const base64 = Buffer.from(json).toString('base64');
     return `data:application/json;base64,${base64}`;
@@ -548,6 +575,7 @@ export class BloomIdentitySkillV2 {
       subCategories: identity.subCategories,
       personalityType: identity.personalityType,
       dimensions: identity.dimensions,
+      tasteSpectrums: identity.tasteSpectrums,
       feedback: merged ? {
         categoryWeights: merged.categoryWeights,
         excludeSkillIds: merged.excludedSkillIds,

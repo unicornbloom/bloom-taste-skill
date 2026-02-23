@@ -19,6 +19,7 @@ export interface ManualQAResult {
   mainCategories: string[];
   subCategories: string[];
   confidence: number;
+  tasteSpectrums?: { learning: number; energy: number; growth: number };
 }
 
 /**
@@ -69,6 +70,16 @@ export const MANUAL_QUESTIONS = [
       { value: 'Wellness / Mental Health', personality: PersonalityType.THE_CULTIVATOR, weight: 9 },
     ],
   },
+  {
+    id: 'learning_style',
+    question: 'How do you usually learn something new?',
+    options: [
+      { value: 'Jump in and try it — I learn by doing', personality: PersonalityType.THE_INNOVATOR, weight: 3, taste: { learning: 20 } },
+      { value: 'Read docs, watch tutorials, then try', personality: PersonalityType.THE_EXPLORER, weight: 3, taste: { learning: 80 } },
+      { value: 'Find a community or mentor to guide me', personality: PersonalityType.THE_CULTIVATOR, weight: 3, taste: { energy: 80 } },
+      { value: 'Set a goal, then figure out the fastest path', personality: PersonalityType.THE_OPTIMIZER, weight: 3, taste: { growth: 80 } },
+    ],
+  },
 ];
 
 export class ManualQAFallback {
@@ -87,6 +98,9 @@ export class ManualQAFallback {
       [PersonalityType.THE_INNOVATOR]: 0,
     };
 
+    // Extract taste spectrum from Q5 learning_style answer
+    let tasteSpectrums = { learning: 50, energy: 50, growth: 50 };
+
     // Calculate scores based on answers
     for (const answer of answers) {
       const question = MANUAL_QUESTIONS.find(q => q.question === answer.question);
@@ -96,6 +110,14 @@ export class ManualQAFallback {
       if (!option) continue;
 
       scores[option.personality] += option.weight;
+
+      // Apply taste spectrum values from Q5
+      if ((option as any).taste) {
+        const taste = (option as any).taste as Record<string, number>;
+        if (taste.learning !== undefined) tasteSpectrums.learning = taste.learning;
+        if (taste.energy !== undefined) tasteSpectrums.energy = taste.energy;
+        if (taste.growth !== undefined) tasteSpectrums.growth = taste.growth;
+      }
     }
 
     // Determine dominant personality
@@ -111,8 +133,10 @@ export class ManualQAFallback {
 
     // Generate result
     const result = this.generateResult(dominantType, answers);
+    result.tasteSpectrums = tasteSpectrums;
 
     console.log(`✅ Determined personality: ${dominantType} (confidence: ${result.confidence}%)`);
+    console.log(`📊 Taste Spectrums (Q&A): Learning=${tasteSpectrums.learning}, Energy=${tasteSpectrums.energy}, Growth=${tasteSpectrums.growth}`);
 
     return result;
   }

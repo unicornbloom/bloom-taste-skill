@@ -27,6 +27,11 @@ export interface RefreshIdentityInput {
     intuition: number;
     contribution: number;
   };
+  tasteSpectrums?: {
+    learning: number;
+    energy: number;
+    growth: number;
+  };
   feedback?: {
     categoryWeights?: Record<string, number>;
     excludeSkillIds?: string[];
@@ -531,7 +536,50 @@ function calculatePersonalityBoost(
     dimensionBoost = Math.min(dimensionBoost, 15);
   }
 
-  return { boost: keywordBoost + dimensionBoost, matchedKeywords };
+  // Taste spectrum boosts
+  let tasteBoost = 0;
+  const taste = identity.tasteSpectrums;
+  if (taste) {
+    // Learning: try-first (< 40) → tools, templates, CLIs, starter kits
+    if (taste.learning < 40) {
+      if (/\b(tool|template|cli|starter|kit|scaffold|boilerplate)\b/i.test(searchText)) {
+        tasteBoost += 6;
+      }
+    }
+    // Learning: study-first (> 60) → tutorials, guides, courses, documentation
+    if (taste.learning > 60) {
+      if (/\b(tutorial|guide|course|documentation|docs|learn|education)\b/i.test(searchText)) {
+        tasteBoost += 6;
+      }
+    }
+    // Energy: solo (< 40) → solo tools, single-player productivity
+    if (taste.energy < 40) {
+      if (/\b(solo|personal|individual|private|local|offline|single)\b/i.test(searchText)) {
+        tasteBoost += 4;
+      }
+    }
+    // Energy: social (> 60) → community platforms, collaborative tools
+    if (taste.energy > 60) {
+      if (/\b(community|collaborat|team|social|shared|multiplayer|real-?time)\b/i.test(searchText)) {
+        tasteBoost += 4;
+      }
+    }
+    // Growth: curiosity-driven (< 40) → exploratory, experimental, research
+    if (taste.growth < 40) {
+      if (/\b(explor|experiment|research|sandbox|playground|creative)\b/i.test(searchText)) {
+        tasteBoost += 4;
+      }
+    }
+    // Growth: goal-driven (> 60) → productivity, shipping, ROI-focused
+    if (taste.growth > 60) {
+      if (/\b(productiv|ship|deploy|roi|analytics|metrics|performance|automat)\b/i.test(searchText)) {
+        tasteBoost += 4;
+      }
+    }
+    tasteBoost = Math.min(tasteBoost, 12);
+  }
+
+  return { boost: keywordBoost + dimensionBoost + tasteBoost, matchedKeywords };
 }
 
 function getPersonalityKeywords(type: PersonalityType): string[] {

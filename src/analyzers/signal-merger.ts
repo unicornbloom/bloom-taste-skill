@@ -28,6 +28,9 @@ export interface MergedSignals {
     conviction: number; // -15 to +15
     intuition: number;
     contribution: number;
+    learning?: number;  // taste spectrum nudges
+    energy?: number;
+    growth?: number;
   };
   excludedSkillIds?: string[];
   categoryWeights?: Record<string, number>;
@@ -194,30 +197,58 @@ function calculateDimensionNudges(userMd: UserMdSignals): {
   conviction: number;
   intuition: number;
   contribution: number;
+  learning?: number;
+  energy?: number;
+  growth?: number;
 } {
   let conviction = 0;
   let intuition = 0;
   let contribution = 0;
+  let learning = 0;
+  let energy = 0;
+  let growth = 0;
 
-  // Working style nudges
+  // Working style nudges (original dimensions)
   if (userMd.workingStyle === 'deep-focus') {
     conviction += 15;
+    learning += 10; // deep-focus → study-first
   } else if (userMd.workingStyle === 'explorer' || userMd.workingStyle === 'multitasker') {
     conviction -= 10;
     intuition += 10;
   }
 
-  // Role nudges
+  // Working style → taste spectrum nudges
+  if (userMd.workingStyle === 'deep-focus') {
+    energy -= 10; // deep-focus → solo
+  } else if (userMd.workingStyle === 'explorer') {
+    growth -= 10; // explorer → curiosity-driven
+  }
+
+  // Role nudges (original)
   if (userMd.role) {
     const roleLower = userMd.role.toLowerCase();
     if (/research/i.test(roleLower)) {
       intuition += 10;
+      learning += 10; // researcher → study-first
     }
     if (/community|bd|business dev|ambassador/i.test(roleLower)) {
       contribution += 10;
+      energy += 10; // community roles → social
     }
     if (/founder|cto|ceo|co-founder/i.test(roleLower)) {
       conviction += 10;
+      growth += 10; // founders → goal-driven
+    }
+  }
+
+  // Current focus → taste nudges
+  if (userMd.currentFocus) {
+    const focusText = userMd.currentFocus.join(' ').toLowerCase();
+    if (/build|ship|launch|prototype/i.test(focusText)) {
+      learning -= 10; // builder → try-first
+    }
+    if (/research|study|learn|academic/i.test(focusText)) {
+      learning += 10; // researcher → study-first
     }
   }
 
@@ -226,6 +257,9 @@ function calculateDimensionNudges(userMd: UserMdSignals): {
     conviction: clamp(conviction, -15, 15),
     intuition: clamp(intuition, -15, 15),
     contribution: clamp(contribution, -15, 15),
+    learning: clamp(learning, -15, 15) || undefined,
+    energy: clamp(energy, -15, 15) || undefined,
+    growth: clamp(growth, -15, 15) || undefined,
   };
 }
 

@@ -7,6 +7,16 @@
 
 import { PersonalityType } from '../types/personality';
 import { CATEGORY_KEYWORDS } from '../types/categories';
+import {
+  TasteSpectrums,
+  LEARNING_TRY_FIRST_KEYWORDS,
+  LEARNING_STUDY_FIRST_KEYWORDS,
+  ENERGY_SOLO_KEYWORDS,
+  ENERGY_SOCIAL_KEYWORDS,
+  GROWTH_CURIOSITY_KEYWORDS,
+  GROWTH_GOAL_KEYWORDS,
+  STRENGTH_PATTERNS,
+} from '../types/taste-dimensions';
 
 export interface UserData {
   sources: string[];
@@ -38,6 +48,7 @@ export interface DimensionScores {
   conviction: number;    // 0-100: Conviction (high) ← → Curiosity (low)
   intuition: number;     // 0-100: Intuition (high) ← → Analysis (low)
   contribution: number;  // 0-100: Contribution behavior score
+  tasteSpectrums?: TasteSpectrums;
 }
 
 export interface PersonalityAnalysis {
@@ -47,6 +58,7 @@ export interface PersonalityAnalysis {
   detectedInterests: string[];
   detectedCategories: string[]; // Top categories for tagline generation
   dimensions: DimensionScores;
+  strengths?: string[];
   confidence: number;
 }
 
@@ -72,21 +84,51 @@ export class PersonalityAnalyzer {
    */
   async analyze(
     userData: UserData,
-    nudges?: { conviction: number; intuition: number; contribution: number },
+    nudges?: {
+      conviction: number;
+      intuition: number;
+      contribution: number;
+      learning?: number;
+      energy?: number;
+      growth?: number;
+    },
   ): Promise<PersonalityAnalysis> {
     console.log('🤖 Analyzing user data for 2-axis personality classification...');
 
     // Step 1: Calculate dimension scores
     const dimensions = this.calculateDimensions(userData);
 
+    // Step 1a: Calculate taste spectrums
+    const tasteSpectrums = this.calculateTasteSpectrums(userData);
+    dimensions.tasteSpectrums = tasteSpectrums;
+
+    // Step 1b: Detect strengths
+    const strengths = this.detectStrengths(userData);
+
     // Step 1.5: Apply dimension nudges from USER.md (if present)
     if (nudges) {
       dimensions.conviction = Math.min(Math.max(dimensions.conviction + nudges.conviction, 0), 100);
       dimensions.intuition = Math.min(Math.max(dimensions.intuition + nudges.intuition, 0), 100);
       dimensions.contribution = Math.min(Math.max(dimensions.contribution + nudges.contribution, 0), 100);
+
+      // Apply taste spectrum nudges if present
+      if (nudges.learning !== undefined) {
+        dimensions.tasteSpectrums.learning = Math.min(Math.max(dimensions.tasteSpectrums.learning + nudges.learning, 0), 100);
+      }
+      if (nudges.energy !== undefined) {
+        dimensions.tasteSpectrums.energy = Math.min(Math.max(dimensions.tasteSpectrums.energy + nudges.energy, 0), 100);
+      }
+      if (nudges.growth !== undefined) {
+        dimensions.tasteSpectrums.growth = Math.min(Math.max(dimensions.tasteSpectrums.growth + nudges.growth, 0), 100);
+      }
+
       console.log(`📊 Nudges applied: conviction ${nudges.conviction >= 0 ? '+' : ''}${nudges.conviction}, intuition ${nudges.intuition >= 0 ? '+' : ''}${nudges.intuition}, contribution ${nudges.contribution >= 0 ? '+' : ''}${nudges.contribution}`);
     }
     console.log(`📊 Dimensions: Conviction=${dimensions.conviction}, Intuition=${dimensions.intuition}, Contribution=${dimensions.contribution}`);
+    console.log(`📊 Taste Spectrums: Learning=${tasteSpectrums.learning}, Energy=${tasteSpectrums.energy}, Growth=${tasteSpectrums.growth}`);
+    if (strengths.length > 0) {
+      console.log(`💪 Detected strengths: ${strengths.join(', ')}`);
+    }
 
     // Step 2: Classify personality type (contribution override logic)
     const personalityType = this.classifyPersonality(dimensions);
@@ -99,8 +141,8 @@ export class PersonalityAnalyzer {
     // Step 4: Generate dynamic tagline
     const tagline = TAGLINE_TEMPLATES[personalityType](topCategory);
 
-    // Step 5: Generate personalized description
-    const description = await this.generateDescription(personalityType, detectedCategories, dimensions);
+    // Step 5: Generate personalized description (dynamically composed from spectrums)
+    const description = this.composeTasteDescription(personalityType, detectedCategories, dimensions);
 
     // Step 6: Extract detailed interests
     const detectedInterests = this.extractInterests(userData);
@@ -115,6 +157,7 @@ export class PersonalityAnalyzer {
       detectedInterests,
       detectedCategories,
       dimensions,
+      strengths: strengths.length > 0 ? strengths : undefined,
       confidence,
     };
   }
@@ -411,39 +454,109 @@ export class PersonalityAnalyzer {
   }
 
   /**
-   * Generate personalized description
+   * Calculate taste spectrum scores (0-100 each)
+   * Same keyword-counting pattern as calculateConviction()
    */
-  private async generateDescription(
+  private calculateTasteSpectrums(userData: UserData): TasteSpectrums {
+    const allText = this.extractAllText(userData).toLowerCase();
+
+    // Learning: try-first (0) <-> study-first (100)
+    let learning = 50;
+    const tryHits = LEARNING_TRY_FIRST_KEYWORDS.filter(k => allText.includes(k)).length;
+    const studyHits = LEARNING_STUDY_FIRST_KEYWORDS.filter(k => allText.includes(k)).length;
+    learning += (studyHits - tryHits) * 5;
+
+    // Energy: solo (0) <-> social (100)
+    let energy = 50;
+    const soloHits = ENERGY_SOLO_KEYWORDS.filter(k => allText.includes(k)).length;
+    const socialHits = ENERGY_SOCIAL_KEYWORDS.filter(k => allText.includes(k)).length;
+    energy += (socialHits - soloHits) * 5;
+
+    // Growth: curiosity-driven (0) <-> goal-driven (100)
+    let growth = 50;
+    const curiosityHits = GROWTH_CURIOSITY_KEYWORDS.filter(k => allText.includes(k)).length;
+    const goalHits = GROWTH_GOAL_KEYWORDS.filter(k => allText.includes(k)).length;
+    growth += (goalHits - curiosityHits) * 5;
+
+    return {
+      learning: Math.min(Math.max(Math.round(learning), 0), 100),
+      energy: Math.min(Math.max(Math.round(energy), 0), 100),
+      growth: Math.min(Math.max(Math.round(growth), 0), 100),
+    };
+  }
+
+  /**
+   * Detect user strengths from text patterns
+   * Looks for "I built/created/wrote/taught" + topic patterns
+   */
+  private detectStrengths(userData: UserData): string[] {
+    const allText = this.extractAllText(userData);
+    const found = new Set<string>();
+
+    for (const { pattern, label } of STRENGTH_PATTERNS) {
+      if (pattern.test(allText)) {
+        found.add(label);
+      }
+    }
+
+    // Return top 5 strength labels
+    return Array.from(found).slice(0, 5);
+  }
+
+  /**
+   * Compose dynamic description from personality type + spectrum positions + categories
+   * Each sentence maps to a different aspect, making every card unique.
+   */
+  private composeTasteDescription(
     type: PersonalityType,
     categories: string[],
-    dimensions: DimensionScores
-  ): Promise<string> {
-    const descriptions = {
-      [PersonalityType.THE_VISIONARY]: [
-        `You back bold ideas before they're obvious. Your conviction is your edge, and you see potential where others see risk. ${categories[0]} is where you spot the next paradigm shift.`,
-        `Vision-driven and future-oriented, you champion projects that challenge the status quo. You're not waiting for proof — you're building the proof.`,
-      ],
-      [PersonalityType.THE_EXPLORER]: [
-        `Every project is a new adventure. You're curious, open-minded, and always discovering. Your diverse interests across ${categories.join(', ')} fuel your supporter journey.`,
-        `You don't settle into one niche — the whole landscape is your playground. Exploration is your strategy, and variety is your strength.`,
-      ],
-      [PersonalityType.THE_CULTIVATOR]: [
-        `You don't just support projects — you help them grow. Through feedback, content, and community building in ${categories[0]}, you're the supporter every builder dreams of.`,
-        `Your contribution score speaks volumes. You're an active participant, not a passive observer. Projects thrive when you're involved.`,
-      ],
-      [PersonalityType.THE_OPTIMIZER]: [
-        `Always leveling up. You're data-driven, focused, and relentless about improvement. ${categories[0]} tools that maximize efficiency earn your support.`,
-        `There's always a better way, and you're determined to find it. You iterate, optimize, and refine until it's right.`,
-      ],
-      [PersonalityType.THE_INNOVATOR]: [
-        `First to back breakthrough technology. You spot the future before it arrives, especially in ${categories[0]}. While others wait, you're already there.`,
-        `Technical depth meets early adoption. You understand how things work under the hood, and you're not afraid to back the bleeding edge.`,
-      ],
+    dimensions: DimensionScores,
+  ): string {
+    const spectrums = dimensions.tasteSpectrums || { learning: 50, energy: 50, growth: 50 };
+    const topCategory = categories[0] || 'Tech';
+
+    // Sentence 1: Personality type opener
+    const typeOpeners: Record<string, string> = {
+      [PersonalityType.THE_VISIONARY]: `You back bold ideas before they're obvious, especially in ${topCategory}.`,
+      [PersonalityType.THE_EXPLORER]: `Every project is a new adventure — your diverse interests across ${categories.slice(0, 2).join(' and ')} fuel your journey.`,
+      [PersonalityType.THE_CULTIVATOR]: `You don't just support projects — you help them grow through feedback and community building.`,
+      [PersonalityType.THE_OPTIMIZER]: `Always leveling up — you're driven to find the most efficient path in ${topCategory}.`,
+      [PersonalityType.THE_INNOVATOR]: `First to back breakthrough technology, you spot the future before it arrives.`,
     };
 
-    const options = descriptions[type];
-    const randomIndex = Math.floor(Math.random() * options.length);
-    return options[randomIndex];
+    // Sentence 2: Learning spectrum
+    let learningSentence: string;
+    if (spectrums.learning > 65) {
+      learningSentence = 'You prefer understanding deeply before acting — research is your foundation.';
+    } else if (spectrums.learning < 35) {
+      learningSentence = 'You learn by doing — prototyping and shipping are how you understand the world.';
+    } else {
+      learningSentence = 'You balance theory and practice, knowing when to study and when to ship.';
+    }
+
+    // Sentence 3: Energy + Growth combined
+    let closingSentence: string;
+    if (spectrums.energy > 65 && spectrums.growth > 65) {
+      closingSentence = 'A social achiever, you thrive in teams pursuing ambitious goals.';
+    } else if (spectrums.energy > 65 && spectrums.growth < 35) {
+      closingSentence = 'You draw energy from community and let curiosity guide where it leads.';
+    } else if (spectrums.energy < 35 && spectrums.growth > 65) {
+      closingSentence = 'A focused individual, you set clear targets and quietly deliver results.';
+    } else if (spectrums.energy < 35 && spectrums.growth < 35) {
+      closingSentence = 'Independent and curiosity-driven, you explore at your own pace.';
+    } else if (spectrums.energy > 65) {
+      closingSentence = 'Collaboration energizes you — the best ideas emerge from conversation.';
+    } else if (spectrums.energy < 35) {
+      closingSentence = 'You do your best work in focused, independent sessions.';
+    } else if (spectrums.growth > 65) {
+      closingSentence = 'Goal-oriented by nature, you measure progress in milestones shipped.';
+    } else if (spectrums.growth < 35) {
+      closingSentence = 'Curiosity is your compass — you follow what fascinates you.';
+    } else {
+      closingSentence = 'Versatile and adaptive, you shift between exploration and execution as the moment demands.';
+    }
+
+    return `${typeOpeners[type] || typeOpeners[PersonalityType.THE_INNOVATOR]} ${learningSentence} ${closingSentence}`;
   }
 
   /**
